@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}RedisLens{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- DataTables CSS -->
+    <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    
+    <style>
+        .sidebar {
+            min-height: 100vh;
+            background-color: #2c3e50;
+        }
+        .sidebar .nav-link {
+            color: #bdc3c7;
+            border-radius: 0.375rem;
+            margin: 0.125rem 0;
+        }
+        .sidebar .nav-link:hover,
+        .sidebar .nav-link.active {
+            color: #fff;
+            background-color: #34495e;
+        }
+        .sidebar .nav-link i {
+            margin-right: 0.5rem;
+        }
+        .main-content {
+            margin-left: 0;
+        }
+        @media (min-width: 768px) {
+            .main-content {
+                margin-left: 250px;
+            }
+        }
+        .stats-card {
+            border-left: 4px solid #3498db;
+        }
+        .stats-card.success {
+            border-left-color: #27ae60;
+        }
+        .stats-card.warning {
+            border-left-color: #f39c12;
+        }
+        .stats-card.danger {
+            border-left-color: #e74c3c;
+        }
+        .filter-form {
+            background-color: #f8f9fa;
+            border-radius: 0.375rem;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .table-responsive {
+            border-radius: 0.375rem;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+        .badge-role-master {
+            background-color: #e74c3c;
+        }
+        .badge-role-slave,
+        .badge-role-replica {
+            background-color: #3498db;
+        }
+        .navbar-brand {
+            font-weight: bold;
+        }
+        .export-buttons {
+            margin-bottom: 1rem;
+        }
+        .nav-section-header {
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
+            padding-top: 0.5rem;
+            padding-bottom: 0.25rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+        }
+    </style>
+    
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{% url 'dashboard' %}">
+                <i class="fas fa-eye"></i> RedisLens
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item">
+                        <a class="nav-link" href="{% url 'analysis_selection' %}">
+                            <i class="fas fa-search"></i> New Analysis
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-cog"></i> Actions
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header"><i class="fas fa-database"></i> Redis Analysis</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'analyze_redis' %}">
+                                <i class="fas fa-play"></i> New Redis Analysis
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'instance_configurations' %}">
+                                <i class="fas fa-cogs"></i> View Redis Configurations
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header"><i class="fas fa-shield-alt"></i> Sentinel Analysis</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'sentinel_analyze' %}">
+                                <i class="fas fa-shield-alt"></i> New Sentinel Analysis
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'sentinel_configurations' %}">
+                                <i class="fas fa-cogs"></i> View Sentinel Configurations
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'monitored_masters' %}">
+                                <i class="fas fa-crown"></i> View Monitored Masters
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header"><i class="fas fa-exclamation-triangle"></i> Anomaly Detection</h6></li>
+                            <li><a class="dropdown-item" href="{% url 'anomaly_dashboard' %}">
+                                <i class="fas fa-exclamation-triangle"></i> Anomaly Dashboard
+                            </a></li>
+                            <li><a class="dropdown-item" href="{% url 'anomaly_rules' %}">
+                                <i class="fas fa-cogs"></i> Detection Rules
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); runAnomalyDetection();">
+                                <i class="fas fa-search"></i> Run Detection
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="#" onclick="event.preventDefault(); showClearAllFromNav();">
+                                <i class="fas fa-trash-alt"></i> Clear All Data
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% if user.is_authenticated %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown">
+                            <i class="fas fa-user"></i> {{ user.username }}
+                        </a>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header"><i class="fas fa-user"></i> Account</h6></li>
+                            <li><span class="dropdown-item-text text-muted">
+                                <small>Logged in as: <strong>{{ user.username }}</strong></small>
+                            </span></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{% url 'oauth_logout' %}">
+                                <i class="fas fa-sign-out-alt"></i> Logout
+                            </a></li>
+                        </ul>
+                    </li>
+                    {% endif %}
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid" style="margin-top: 56px;">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block bg-dark sidebar collapse" id="sidebarMenu">
+                <div class="position-sticky pt-3">
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+                               href="{% url 'dashboard' %}">
+                                <i class="fas fa-home"></i> Dashboard
+                            </a>
+                        </li>
+                        
+                        <!-- Getting Started Section -->
+                        <li class="nav-item mt-2">
+                            <div class="nav-section-header text-muted small">
+                                <i class="fas fa-rocket"></i> GETTING STARTED
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'guided_setup' %}active{% endif %}" 
+                               href="{% url 'guided_setup' %}">
+                                <i class="fas fa-magic"></i> Guided Setup
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'redis_concepts' %}active{% endif %}" 
+                               href="{% url 'redis_concepts' %}">
+                                <i class="fas fa-book-open"></i> Redis Concepts
+                            </a>
+                        </li>
+                        
+                        <!-- Analysis Section -->
+                        <li class="nav-item mt-2">
+                            <div class="nav-section-header text-muted small">
+                                <i class="fas fa-search"></i> ANALYSIS
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'analysis_selection' or request.resolver_match.url_name == 'analyze_redis' or request.resolver_match.url_name == 'sentinel_analyze' %}active{% endif %}" 
+                               href="{% url 'analysis_selection' %}">
+                                <i class="fas fa-search"></i> Start Analysis
+                            </a>
+                        </li>
+                        
+                        <!-- Analysis History Section -->
+                        <li class="nav-item mt-3">
+                            <div class="nav-section-header text-muted small">
+                                <i class="fas fa-history"></i> ANALYSIS HISTORY
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'master_sessions' %}active{% endif %}" 
+                               href="{% url 'master_sessions' %}">
+                                <i class="fas fa-history"></i> Recent Redis Analysis
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'sentinel_sessions' %}active{% endif %}"
+                                href="{% url 'sentinel_sessions' %}">
+                                <i class="fas fa-history"></i> Recent Sentinel Analysis
+                            </a>
+                        </li>
+                        
+                        <!-- Configuration Management Section -->
+                        <li class="nav-item mt-3">
+                            <div class="nav-section-header text-muted small">
+                                <i class="fas fa-cogs"></i> CONFIGURATIONS
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'instance_configurations' %}active{% endif %}"
+                                href="{% url 'instance_configurations' %}">
+                                <i class="fas fa-database"></i> Redis Configurations
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'sentinel_configurations' %}active{% endif %}" 
+                               href="{% url 'sentinel_configurations' %}">
+                                <i class="fas fa-shield-alt"></i> Sentinel Configurations
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'monitored_masters' %}active{% endif %}"
+                                href="{% url 'monitored_masters' %}">
+                                <i class="fas fa-crown"></i> Monitored Masters
+                            </a>
+                        </li>
+                        
+                        
+                        
+                        <!-- Anomaly Detection Section -->
+                        <li class="nav-item mt-3">
+                            <div class="nav-section-header text-muted small">
+                                <i class="fas fa-exclamation-triangle"></i> ANOMALY DETECTION
+                            </div>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'anomaly_dashboard' %}active{% endif %}" 
+                               href="{% url 'anomaly_dashboard' %}">
+                                <i class="fas fa-exclamation-triangle"></i> Anomaly Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'anomaly_rules' %}active{% endif %}" 
+                               href="{% url 'anomaly_rules' %}">
+                                <i class="fas fa-cogs"></i> Detection Rules
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" href="#" onclick="event.preventDefault(); runAnomalyDetection();">
+                                <i class="fas fa-search"></i> Run Detection
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+                <div class="pt-3 pb-2 mb-3">
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                                {{ message }}
+                                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    {% block content %}{% endblock %}
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <!-- Global Clear All Confirmation Modal -->
+    <div class="modal fade" id="globalClearAllModal" tabindex="-1" aria-labelledby="globalClearAllModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header bg-danger text-white">
+                    <h5 class="modal-title" id="globalClearAllModalLabel">
+                        <i class="fas fa-exclamation-triangle"></i> Confirm Clear All Data
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="alert alert-warning">
+                        <i class="fas fa-warning"></i>
+                        <strong>Warning!</strong> This action cannot be undone.
+                    </div>
+                    <p>You are about to delete <strong>ALL</strong> analysis data including:</p>
+                    <ul>
+                        <li>All analysis sessions</li>
+                        <li>All Redis instances</li>
+                        <li>All configuration parameters</li>
+                        <li>All replication information</li>
+                    </ul>
+                    <p class="text-danger"><strong>This action is permanent and cannot be undone!</strong></p>
+                    <p>Are you sure you want to continue?</p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <form method="post" action="{% url 'clear_all_analysis' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-danger">
+                            <i class="fas fa-trash-alt"></i> Yes, Clear All Data
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+    <!-- DataTables JS -->
+    <script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+    
+    <script>
+        // Initialize tooltips globally
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+        });
+
+        // Global clear all function for navigation
+        function showClearAllFromNav() {
+            var modal = new bootstrap.Modal(document.getElementById('globalClearAllModal'));
+            modal.show();
+        }
+
+        // Run anomaly detection function
+        function runAnomalyDetection() {
+            if (confirm('Run anomaly detection on all your Redis instances? This may take a moment.')) {
+                // Create a form and submit it
+                var form = document.createElement('form');
+                form.method = 'POST';
+                form.action = '{% url 'run_anomaly_detection' %}';
+                
+                // Add CSRF token
+                var csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                if (csrfToken) {
+                    var csrfInput = document.createElement('input');
+                    csrfInput.type = 'hidden';
+                    csrfInput.name = 'csrfmiddlewaretoken';
+                    csrfInput.value = csrfToken.value;
+                    form.appendChild(csrfInput);
+                }
+                
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+
+        // Help function for contextual guidance
+        function showHelp(topic) {
+            var helpMessages = {
+                'redis': 'Redis is an in-memory data structure store. Use Redis Analysis to monitor standalone instances or master-slave setups.',
+                'sentinel': 'Redis Sentinel provides high availability through automatic failover. Use Sentinel Analysis to monitor your HA setup.',
+                'anomaly': 'Anomaly detection helps identify configuration issues and performance problems in your Redis infrastructure.',
+                'master-slave': 'In master-slave replication, the master handles writes while slaves handle reads and provide data redundancy.'
+            };
+            
+            alert(helpMessages[topic] || 'For more help, check the Redis Concepts page in the navigation.');
+        }
+
+        // Smooth scrolling for anchor links
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function (e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth'
+                        });
+                    }
+                });
+            });
+        });
+    </script>
+    
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

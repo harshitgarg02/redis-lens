@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - RedisLens</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 500px;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo i {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .logo h1 {
+            color: #333;
+            font-weight: 600;
+            margin: 0;
+        }
+        .auth-tabs {
+            margin-bottom: 2rem;
+        }
+        .nav-pills .nav-link {
+            border-radius: 10px;
+            font-weight: 500;
+            padding: 12px 20px;
+            margin: 0 5px;
+        }
+        .nav-pills .nav-link.active {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+        }
+        .form-control {
+            padding: 12px 15px;
+            border-radius: 10px;
+            border: 1px solid #e0e0e0;
+            margin-bottom: 15px;
+        }
+        .form-control:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+        }
+        .btn-login {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 12px 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+        .btn-oauth {
+            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            border: none;
+            padding: 15px 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+        .btn-oauth:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(40, 167, 69, 0.3);
+        }
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+        .form-label {
+            font-weight: 500;
+            color: #495057;
+            margin-bottom: 8px;
+        }
+        .input-group-text {
+            border-radius: 10px 0 0 10px;
+            border: 1px solid #e0e0e0;
+            background-color: #f8f9fa;
+        }
+        .input-group .form-control {
+            border-radius: 0 10px 10px 0;
+            margin-bottom: 0;
+        }
+        .auth-method-info {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        .tab-content {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .divider {
+            text-align: center;
+            margin: 20px 0;
+            position: relative;
+        }
+        .divider::before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #e0e0e0;
+            z-index: 1;
+        }
+        .divider span {
+            background: white;
+            padding: 0 15px;
+            color: #6c757d;
+            font-size: 14px;
+            position: relative;
+            z-index: 2;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="logo">
+            <i class="fas fa-database"></i>
+            <h1>RedisLens</h1>
+            <p class="text-muted">Multi-User Analysis Platform</p>
+        </div>
+        
+        <!-- Display messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'info' %}alert-info{% else %}alert-warning{% endif %}" role="alert">
+                    <i class="fas {% if message.tags == 'error' %}fa-exclamation-triangle{% elif message.tags == 'success' %}fa-check-circle{% elif message.tags == 'info' %}fa-info-circle{% else %}fa-exclamation-circle{% endif %} me-2"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <!-- Authentication Method Tabs -->
+        <ul class="nav nav-pills justify-content-center auth-tabs" id="authTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="oauth-tab" data-bs-toggle="pill" data-bs-target="#oauth" type="button" role="tab" aria-controls="oauth" aria-selected="true">
+                    <i class="fas fa-shield-alt"></i> OAuth Login
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="local-tab" data-bs-toggle="pill" data-bs-target="#local" type="button" role="tab" aria-controls="local" aria-selected="false">
+                    <i class="fas fa-user"></i> Login
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="signup-tab" data-bs-toggle="pill" data-bs-target="#signup" type="button" role="tab" aria-controls="signup" aria-selected="false">
+                    <i class="fas fa-user-plus"></i> Sign Up
+                </button>
+            </li>
+        </ul>
+        
+        <!-- Tab Content -->
+        <div class="tab-content" id="authTabContent">
+            <!-- OAuth Login -->
+            <div class="tab-pane fade show active" id="oauth" role="tabpanel" aria-labelledby="oauth-tab">
+                <div class="text-center">
+                    <p class="text-muted mb-4">Use Enterprise OAuth Login</p>
+                    <a href="{% url 'oauth_login' %}" class="btn btn-primary btn-oauth">
+                        <i class="fas fa-shield-alt me-2"></i>Login with SSO
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Local Login -->
+            <div class="tab-pane fade" id="local" role="tabpanel" aria-labelledby="local-tab">
+                <p class="text-muted mb-4 text-center">Login with your local RedisLens account</p>
+                <form method="post" action="{% url 'login_page' %}" id="localLoginForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="auth_method" value="generic">
+                    
+                    <div class="mb-3">
+                        <input type="text" class="form-control" name="username" 
+                               placeholder="Username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <input type="password" class="form-control" name="password" 
+                               placeholder="Password" required>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-primary btn-login">
+                        <i class="fas fa-sign-in-alt me-2"></i>Login
+                    </button>
+                </form>
+            </div>
+            
+            <!-- Signup -->
+            <div class="tab-pane fade" id="signup" role="tabpanel" aria-labelledby="signup-tab">
+                <p class="text-muted mb-4 text-center">Create a new RedisLens account</p>
+                <form method="post" action="{% url 'login_page' %}" id="signupForm">
+                    {% csrf_token %}
+                    <input type="hidden" name="auth_method" value="signup">
+                    
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" name="first_name" 
+                                   placeholder="First Name" required>
+                        </div>
+                        <div class="col-md-6">
+                            <input type="text" class="form-control" name="last_name" 
+                                   placeholder="Last Name" required>
+                        </div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <input type="email" class="form-control" name="email" 
+                               placeholder="Email Address" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <input type="text" class="form-control" name="username" 
+                               placeholder="Username" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <input type="password" class="form-control" name="password1" 
+                               placeholder="Password" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <input type="password" class="form-control" name="password2" 
+                               placeholder="Confirm Password" required>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">
+                            <i class="fas fa-info-circle me-1"></i>
+                            Password must be at least 8 characters and contain letters and numbers.
+                        </small>
+                    </div>
+                    
+                    <button type="submit" class="btn btn-success btn-login">
+                        <i class="fas fa-user-plus me-2"></i>Create Account
+                    </button>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Features Preview -->
+        <div class="divider">
+            <span>Platform Features</span>
+        </div>
+        <div class="row text-center">
+            <div class="col-4">
+                <i class="fas fa-chart-line text-primary mb-2"></i>
+                <small class="d-block text-muted">Analytics</small>
+            </div>
+            <div class="col-4">
+                <i class="fas fa-exclamation-triangle text-warning mb-2"></i>
+                <small class="d-block text-muted">Anomaly Detection</small>
+            </div>
+            <div class="col-4">
+                <i class="fas fa-users text-success mb-2"></i>
+                <small class="d-block text-muted">Multi-User</small>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Form validation and CSRF token handling
+        document.addEventListener('DOMContentLoaded', function() {
+            // Handle local login form
+            const localForm = document.getElementById('localLoginForm');
+            if (localForm) {
+                localForm.addEventListener('submit', function(e) {
+                    // Check if CSRF token exists
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                    if (!csrfToken || !csrfToken.value) {
+                        console.error('CSRF token missing');
+                        e.preventDefault();
+                        alert('Security token missing. Please refresh the page and try again.');
+                        return false;
+                    }
+                    console.log('CSRF token found:', csrfToken.value.substring(0, 10) + '...');
+                });
+            }
+            
+            // Handle signup form
+            const signupForm = document.getElementById('signupForm');
+            if (signupForm) {
+                signupForm.addEventListener('submit', function(e) {
+                    // Check if CSRF token exists
+                    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]');
+                    if (!csrfToken || !csrfToken.value) {
+                        console.error('CSRF token missing');
+                        e.preventDefault();
+                        alert('Security token missing. Please refresh the page and try again.');
+                        return false;
+                    }
+                    
+                    // Basic password validation
+                    const password1 = signupForm.querySelector('[name="password1"]').value;
+                    const password2 = signupForm.querySelector('[name="password2"]').value;
+                    
+                    if (password1 !== password2) {
+                        e.preventDefault();
+                        alert('Passwords do not match. Please check your passwords and try again.');
+                        return false;
+                    }
+                    
+                    if (password1.length < 8) {
+                        e.preventDefault();
+                        alert('Password must be at least 8 characters long.');
+                        return false;
+                    }
+                    
+                    console.log('Signup form validation passed');
+                });
+            }
+        });
+    </script>
+</body>
+</html>

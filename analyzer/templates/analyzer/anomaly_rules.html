@@ -1,0 +1,238 @@
+{% extends 'analyzer/base.html' %}
+
+{% block title %}Anomaly Detection Rules{% endblock %}
+
+{% block extra_css %}
+<style>
+    .severity-critical { color: #dc3545; font-weight: bold; }
+    .severity-warning { color: #fd7e14; font-weight: bold; }
+    .severity-notice { color: #0dcaf0; font-weight: bold; }
+    .rule-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #e9ecef;
+    }
+    .rule-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .rule-card.critical {
+        border-left-color: #dc3545;
+    }
+    .rule-card.warning {
+        border-left-color: #fd7e14;
+    }
+    .rule-card.notice {
+        border-left-color: #0dcaf0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'anomaly_dashboard' %}">Anomalies</a></li>
+                    <li class="breadcrumb-item active">Rules</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-cogs text-primary me-2"></i>
+                Anomaly Detection Rules
+            </h1>
+            <p class="text-muted">Manage and view Redis configuration anomaly detection rules</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <a href="{% url 'anomaly_dashboard' %}" class="btn btn-outline-primary">
+                <i class="fas fa-arrow-left me-1"></i>Back to Dashboard
+            </a>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row">
+                        <div class="col-md-2">
+                            <label class="form-label">Category</label>
+                            <select name="category" class="form-select">
+                                <option value="">All Categories</option>
+                                {% for value, display in categories %}
+                                    <option value="{{ value }}" {% if current_filters.category == value %}selected{% endif %}>
+                                        {{ display }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Severity</label>
+                            <select name="severity" class="form-select">
+                                <option value="">All Severities</option>
+                                {% for value, display in severities %}
+                                    <option value="{{ value }}" {% if current_filters.severity == value %}selected{% endif %}>
+                                        {{ display }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select name="active_only" class="form-select">
+                                <option value="true" {% if current_filters.active_only %}selected{% endif %}>Active Only</option>
+                                <option value="false" {% if not current_filters.active_only %}selected{% endif %}>All Rules</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Search</label>
+                            <input type="text" name="search" class="form-control" 
+                                   placeholder="Search rule ID, description, or directives..."
+                                   value="{{ current_filters.search }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Filter</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rules List -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Detection Rules ({{ page_obj.paginator.count }})</h5>
+                    {% if current_filters.category or current_filters.severity or current_filters.search or not current_filters.active_only %}
+                        <a href="{% url 'anomaly_rules' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if rules %}
+                        <div class="row">
+                            {% for rule in rules %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card rule-card {{ rule.severity }}">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <div>
+                                                    <span class="badge bg-secondary">{{ rule.rule_id }}</span>
+                                                    {% if not rule.is_active %}
+                                                        <span class="badge bg-secondary ms-1">Inactive</span>
+                                                    {% endif %}
+                                                </div>
+                                                <span class="severity-{{ rule.severity }}">
+                                                    {{ rule.get_severity_display }}
+                                                </span>
+                                            </div>
+                                            <h6 class="card-title">{{ rule.anomaly_description|truncatechars:80 }}</h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">
+                                                    <strong>Category:</strong> {{ rule.get_category_display }}
+                                                </small>
+                                            </p>
+                                            <p class="card-text">
+                                                <small class="text-muted">
+                                                    <strong>Directives:</strong>
+                                                    {% for directive in rule.directive_list %}
+                                                        <span class="badge bg-light text-dark">{{ directive }}</span>
+                                                    {% endfor %}
+                                                </small>
+                                            </p>
+                                            
+                                            <!-- Collapsible Details -->
+                                            <div class="mt-3">
+                                                <button class="btn btn-outline-info btn-sm" type="button" 
+                                                        data-bs-toggle="collapse" 
+                                                        data-bs-target="#rule{{ rule.id }}"
+                                                        aria-expanded="false">
+                                                    <i class="fas fa-info-circle me-1"></i>View Details
+                                                </button>
+                                            </div>
+                                            
+                                            <div class="collapse mt-3" id="rule{{ rule.id }}">
+                                                <div class="card card-body bg-light">
+                                                    <p><strong>Detection Logic:</strong></p>
+                                                    <small class="text-muted font-monospace">{{ rule.detection_logic }}</small>
+                                                    
+                                                    <p class="mt-2 mb-1"><strong>Recommendation:</strong></p>
+                                                    <small class="text-muted">{{ rule.recommended_state }}</small>
+                                                    
+                                                    <div class="mt-2">
+                                                        <small class="text-muted">
+                                                            <strong>Created:</strong> {{ rule.created_at|date:"M d, Y" }}
+                                                            {% if rule.updated_at != rule.created_at %}
+                                                                | <strong>Updated:</strong> {{ rule.updated_at|date:"M d, Y" }}
+                                                            {% endif %}
+                                                        </small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if page_obj.has_other_pages %}
+                            <nav aria-label="Rules pagination">
+                                <ul class="pagination justify-content-center">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.severity %}severity={{ current_filters.severity }}&{% endif %}{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if not current_filters.active_only %}active_only=false&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.severity %}severity={{ current_filters.severity }}&{% endif %}{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if not current_filters.active_only %}active_only=false&{% endif %}page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.severity %}severity={{ current_filters.severity }}&{% endif %}{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}{% if not current_filters.active_only %}active_only=false&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No rules found</h4>
+                            <p class="text-muted">
+                                {% if current_filters.category or current_filters.severity or current_filters.search or not current_filters.active_only %}
+                                    Try adjusting your filters or <a href="{% url 'anomaly_rules' %}">clear all filters</a>.
+                                {% else %}
+                                    No anomaly detection rules are currently configured.
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

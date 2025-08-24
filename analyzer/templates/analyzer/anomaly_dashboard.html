@@ -1,0 +1,320 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+{% load duration_filters %}
+
+{% block title %}Anomaly Detection Dashboard{% endblock %}
+
+{% block extra_css %}
+<style>
+    .severity-critical { color: #dc3545; font-weight: bold; }
+    .severity-warning { color: #fd7e14; font-weight: bold; }
+    .severity-notice { color: #0dcaf0; font-weight: bold; }
+    .status-detected { color: #dc3545; }
+    .status-acknowledged { color: #fd7e14; }
+    .status-resolved { color: #198754; }
+    .status-false_positive { color: #6c757d; }
+    .anomaly-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #e9ecef;
+    }
+    .anomaly-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .anomaly-card.critical {
+        border-left-color: #dc3545;
+    }
+    .anomaly-card.warning {
+        border-left-color: #fd7e14;
+    }
+    .anomaly-card.notice {
+        border-left-color: #0dcaf0;
+    }
+    .stats-card {
+        border-radius: 10px;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .btn-run-detection {
+        background: linear-gradient(45deg, #007bff, #0056b3);
+        border: none;
+        color: white;
+        transition: all 0.3s;
+    }
+    .btn-run-detection:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        color: white;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <h1 class="h3 mb-0">
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                Anomaly Detection Dashboard
+            </h1>
+            <p class="text-muted">Monitor and manage Redis configuration anomalies</p>
+        </div>
+        <div class="col-md-4 text-end">
+            <form method="post" action="{% url 'run_anomaly_detection' %}" class="d-inline">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-run-detection btn-lg">
+                    <i class="fas fa-search me-2"></i>Run Detection
+                </button>
+            </form>
+            <a href="{% url 'anomaly_rules' %}" class="btn btn-outline-secondary btn-lg ms-2">
+                <i class="fas fa-cogs me-2"></i>Rules
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics Cards -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card stats-card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Anomalies</h5>
+                    <h2 class="display-4 text-primary">{{ total_anomalies }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Critical</h5>
+                    <h2 class="display-4 text-danger">{{ critical_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Warning</h5>
+                    <h2 class="display-4 text-warning">{{ warning_count }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card stats-card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Notice</h5>
+                    <h2 class="display-4 text-info">{{ notice_count }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Overview -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Status Overview</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-3 text-center">
+                            <div class="status-detected">
+                                <i class="fas fa-exclamation-circle fa-2x"></i>
+                                <h4>{{ detected_count }}</h4>
+                                <small>Detected</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="status-acknowledged">
+                                <i class="fas fa-eye fa-2x"></i>
+                                <h4>{{ acknowledged_count }}</h4>
+                                <small>Acknowledged</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                            <div class="status-resolved">
+                                <i class="fas fa-check-circle fa-2x"></i>
+                                <h4>{{ resolved_count }}</h4>
+                                <small>Resolved</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 text-center">
+                                                    <div class="status-false_positive">
+                            <i class="fas fa-times-circle fa-2x"></i>
+                            <h4>{{ false_positive_count }}</h4>
+                            <small>False Positive</small>
+                        </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Filters</h5>
+                </div>
+                <div class="card-body">
+                    <form method="get" class="row">
+                        <div class="col-md-2">
+                            <label class="form-label">Severity</label>
+                            <select name="severity" class="form-select">
+                                <option value="">All Severities</option>
+                                {% for value, display in severities %}
+                                    <option value="{{ value }}" {% if current_filters.severity == value %}selected{% endif %}>
+                                        {{ display }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Category</label>
+                            <select name="category" class="form-select">
+                                <option value="">All Categories</option>
+                                {% for value, display in categories %}
+                                    <option value="{{ value }}" {% if current_filters.category == value %}selected{% endif %}>
+                                        {{ display }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">Status</label>
+                            <select name="status" class="form-select">
+                                <option value="">All Statuses</option>
+                                {% for value, display in statuses %}
+                                    <option value="{{ value }}" {% if current_filters.status == value %}selected{% endif %}>
+                                        {{ display }}
+                                    </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Search</label>
+                            <input type="text" name="search" class="form-control" 
+                                   placeholder="Search rule ID, description, or instance..."
+                                   value="{{ current_filters.search }}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="form-label">&nbsp;</label>
+                            <div class="d-grid">
+                                <button type="submit" class="btn btn-primary">Filter</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anomalies List -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">Detected Anomalies ({{ page_obj.paginator.count }})</h5>
+                    {% if current_filters.severity or current_filters.category or current_filters.status or current_filters.search %}
+                        <a href="{% url 'anomaly_dashboard' %}" class="btn btn-outline-secondary btn-sm">
+                            <i class="fas fa-times me-1"></i>Clear Filters
+                        </a>
+                    {% endif %}
+                </div>
+                <div class="card-body">
+                    {% if anomalies %}
+                        <div class="row">
+                            {% for anomaly in anomalies %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card anomaly-card {{ anomaly.rule.severity }}">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <span class="badge bg-secondary">{{ anomaly.rule.rule_id }}</span>
+                                                <span class="severity-{{ anomaly.rule.severity }}">
+                                                    {{ anomaly.rule.get_severity_display }}
+                                                </span>
+                                            </div>
+                                            <h6 class="card-title">
+                                                <a href="{% url 'anomaly_detail' anomaly.id %}" class="text-decoration-none">
+                                                    {{ anomaly.rule.anomaly_description|truncatechars:80 }}
+                                                </a>
+                                            </h6>
+                                            <p class="card-text text-muted small">
+                                                <i class="fas fa-server me-1"></i>
+                                                {% if anomaly.redis_instance %}
+                                                    <a href="{% url 'instance_detail' anomaly.redis_instance.id %}">
+                                                        {{ anomaly.redis_instance }}
+                                                    </a>
+                                                {% else %}
+                                                    <a href="{% url 'sentinel_detail' anomaly.sentinel_instance.id %}">
+                                                        {{ anomaly.sentinel_instance }}
+                                                    </a>
+                                                {% endif %}
+                                            </p>
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    {{ anomaly.detected_at|to_ist|date:"M d, Y H:i" }}
+                                                </small>
+                                                <span class="badge status-{{ anomaly.status }}">
+                                                    {{ anomaly.get_status_display }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+
+                        <!-- Pagination -->
+                        {% if page_obj.has_other_pages %}
+                            <nav aria-label="Anomalies pagination">
+                                <ul class="pagination justify-content-center">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{% if current_filters.severity %}severity={{ current_filters.severity }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.status %}status={{ current_filters.status }}&{% endif %}{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                                        </li>
+                                    {% endif %}
+                                    
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if page_obj.number == num %}
+                                            <li class="page-item active">
+                                                <span class="page-link">{{ num }}</span>
+                                            </li>
+                                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                                            <li class="page-item">
+                                                <a class="page-link" href="?{% if current_filters.severity %}severity={{ current_filters.severity }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.status %}status={{ current_filters.status }}&{% endif %}{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}page={{ num }}">{{ num }}</a>
+                                            </li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item">
+                                            <a class="page-link" href="?{% if current_filters.severity %}severity={{ current_filters.severity }}&{% endif %}{% if current_filters.category %}category={{ current_filters.category }}&{% endif %}{% if current_filters.status %}status={{ current_filters.status }}&{% endif %}{% if current_filters.search %}search={{ current_filters.search }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                                        </li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        {% endif %}
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-search fa-3x text-muted mb-3"></i>
+                            <h4 class="text-muted">No anomalies found</h4>
+                            <p class="text-muted">
+                                {% if current_filters.severity or current_filters.category or current_filters.status or current_filters.search %}
+                                    Try adjusting your filters or <a href="{% url 'anomaly_dashboard' %}">clear all filters</a>.
+                                {% else %}
+                                    Run anomaly detection to find configuration issues in your Redis instances.
+                                {% endif %}
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

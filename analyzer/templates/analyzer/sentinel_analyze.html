@@ -1,0 +1,312 @@
+{% extends 'analyzer/base.html' %}
+
+{% block title %}Sentinel Analysis - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-shield-alt"></i> Start Sentinel Analysis</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-shield-alt"></i> Configure Sentinel Analysis
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="sentinelAnalysisForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="sentinel_ip" class="form-label">
+                            <strong>Sentinel IP Address <span class="text-danger">*</span></strong>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="sentinel_ip" 
+                               name="sentinel_ip" 
+                               placeholder="e.g., 192.168.1.100" 
+                               required>
+                        <div class="form-text">
+                            Enter the IP address of the Redis Sentinel instance.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="sentinel_port" class="form-label">
+                            <strong>Sentinel Port</strong>
+                        </label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="sentinel_port" 
+                               name="sentinel_port" 
+                               value="26379" 
+                               min="1" 
+                               max="65535">
+                        <div class="form-text">
+                            Redis Sentinel port number (default: 26379).
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            <strong>Password (Optional)</strong>
+                        </label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="password" 
+                               name="password" 
+                               placeholder="Enter Sentinel password if required">
+                        <div class="form-text">
+                            Leave blank if no authentication is required.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="analysis_type" class="form-label">
+                            <strong>Analysis Type <span class="text-danger">*</span></strong>
+                        </label>
+                        <select class="form-select" id="analysis_type" name="analysis_type" required>
+                            <option value="topology" selected>Topology Discovery</option>
+                            <option value="full">Sentinel Analysis</option>
+                            <option value="config">Sentinel Configuration Only</option>
+                            <option value="discovery">Master Discovery Only</option>
+                        </select>
+                        <div class="form-text">
+                            Choose the type of analysis to perform.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="session_name" class="form-label">
+                            <strong>Session Name (Optional)</strong>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="session_name" 
+                               name="session_name" 
+                               placeholder="e.g., Production Sentinel Analysis">
+                        <div class="form-text">
+                            Provide a descriptive name for this analysis session.
+                        </div>
+                    </div>
+
+                    <!-- Analysis Type Descriptions -->
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Analysis Types Explained:</strong>
+                        <div class="mt-2" id="analysisDescription">
+                            <div id="fullDescription">
+                                <strong>Sentinel Analysis:</strong>
+                                <ul class="mb-0 mt-1">
+                                    <li>Analyze Sentinel configuration</li>
+                                    <li>Discover all monitored masters</li>
+                                    <li>Analyze each master and its slaves</li>
+                                    <li>Store complete Redis topology</li>
+                                </ul>
+                            </div>
+                            <div id="configDescription" style="display:none;">
+                                <strong>Sentinel Configuration Only:</strong>
+                                <ul class="mb-0 mt-1">
+                                    <li>Connect to Sentinel instance</li>
+                                    <li>Fetch Sentinel configuration parameters</li>
+                                    <li>Get list of monitored masters (basic info)</li>
+                                    <li>No Redis instance analysis</li>
+                                </ul>
+                            </div>
+                            <div id="topologyDescription" style="display:none;">
+                                <strong>Topology Discovery:</strong>
+                                <ul class="mb-0 mt-1">
+                                    <li><strong>Discover ALL Sentinels</strong> in the topology from one input</li>
+                                    <li>Analyze each discovered Sentinel's configuration</li>
+                                    <li>Discover and analyze all masters and slaves</li>
+                                    <li>Comprehensive cluster-wide analysis</li>
+                                    <li class="text-success"><strong>Most comprehensive option!</strong></li>
+                                </ul>
+                            </div>
+                            <div id="discoveryDescription" style="display:none;">
+                                <strong>Master Discovery Only:</strong>
+                                <ul class="mb-0 mt-1">
+                                    <li>Discover masters through Sentinel</li>
+                                    <li>Analyze each discovered master</li>
+                                    <li>Analyze slaves of each master</li>
+                                    <li>No Sentinel configuration analysis</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" onclick="resetForm()">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-shield-alt"></i> Start Analysis
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Analysis Progress Section (initially hidden) -->
+        <div class="card shadow mt-4 d-none" id="progressCard">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-spinner fa-spin"></i> Sentinel Analysis in Progress
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: 0%" 
+                         id="progressBar">
+                    </div>
+                </div>
+                <div id="progressText">Initializing Sentinel analysis...</div>
+            </div>
+        </div>
+
+        <!-- Previous Analysis Results -->
+        <div class="card shadow mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-history"></i> Recent Sentinel Analyses
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    View your recent Sentinel analysis sessions or browse 
+                    <a href="{% url 'sentinel_configurations' %}">Sentinel configurations</a> 
+                    from previous analyses.
+                </p>
+                <div class="d-grid gap-2 d-md-flex">
+                    <a href="{% url 'sentinel_sessions' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-list"></i> View All Analysis
+                    </a>
+                    <a href="{% url 'sentinel_configurations' %}" class="btn btn-outline-info">
+                        <i class="fas fa-cogs"></i> View Configurations
+                    </a>
+                    <a href="{% url 'monitored_masters' %}" class="btn btn-outline-warning">
+                        <i class="fas fa-crown"></i> View Monitored Masters
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function resetForm() {
+    document.getElementById('sentinelAnalysisForm').reset();
+    document.getElementById('sentinel_port').value = '26379';
+    document.getElementById('analysis_type').value = 'full';
+    updateAnalysisDescription();
+}
+
+function updateAnalysisDescription() {
+    const analysisType = document.getElementById('analysis_type').value;
+    
+    // Hide all descriptions
+    document.getElementById('fullDescription').style.display = 'none';
+    document.getElementById('topologyDescription').style.display = 'none';
+    document.getElementById('configDescription').style.display = 'none';
+    document.getElementById('discoveryDescription').style.display = 'none';
+    
+    // Show selected description
+    if (analysisType === 'config') {
+        document.getElementById('configDescription').style.display = 'block';
+    } else if (analysisType === 'discovery') {
+        document.getElementById('discoveryDescription').style.display = 'block';
+    } else if (analysisType === 'topology') {
+        document.getElementById('topologyDescription').style.display = 'block';
+    } else {
+        document.getElementById('fullDescription').style.display = 'block';
+    }
+}
+
+document.getElementById('analysis_type').addEventListener('change', updateAnalysisDescription);
+
+document.getElementById('sentinelAnalysisForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    const progressCard = document.getElementById('progressCard');
+    
+    // Show progress and disable form
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    submitBtn.disabled = true;
+    progressCard.classList.remove('d-none');
+    
+    // Simulate progress
+    let progress = 0;
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    const analysisType = document.getElementById('analysis_type').value;
+    let progressMessages = [];
+    
+    if (analysisType === 'config') {
+        progressMessages = [
+            'Connecting to Sentinel...',
+            'Fetching Sentinel configuration...',
+            'Getting monitored masters list...',
+            'Saving configuration data...'
+        ];
+    } else if (analysisType === 'discovery') {
+        progressMessages = [
+            'Connecting to Sentinel...',
+            'Discovering monitored masters...',
+            'Analyzing master instances...',
+            'Analyzing slave instances...',
+            'Saving topology data...'
+        ];
+    } else {
+        progressMessages = [
+            'Connecting to Sentinel...',
+            'Fetching Sentinel configuration...',
+            'Discovering monitored masters...',
+            'Analyzing Redis topology...',
+            'Saving complete analysis...'
+        ];
+    }
+    
+    const interval = setInterval(() => {
+        progress += (100 / progressMessages.length);
+        progressBar.style.width = Math.min(progress, 100) + '%';
+        
+        const messageIndex = Math.floor(progress / (100 / progressMessages.length)) - 1;
+        if (messageIndex >= 0 && messageIndex < progressMessages.length) {
+            progressText.textContent = progressMessages[messageIndex];
+        }
+        
+        if (progress >= 100) {
+            clearInterval(interval);
+            progressText.textContent = 'Analysis complete! Redirecting...';
+        }
+    }, 1000);
+});
+
+// IP address validation
+document.getElementById('sentinel_ip').addEventListener('input', function(e) {
+    const ip = e.target.value;
+    const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+    
+    if (ip && !ipPattern.test(ip)) {
+        e.target.setCustomValidity('Please enter a valid IP address');
+    } else {
+        e.target.setCustomValidity('');
+    }
+});
+
+// Initialize description on page load
+updateAnalysisDescription();
+</script>
+{% endblock %}

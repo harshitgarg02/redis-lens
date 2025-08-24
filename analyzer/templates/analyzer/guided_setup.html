@@ -1,0 +1,309 @@
+{% extends 'analyzer/base.html' %}
+
+{% block title %}Guided Setup - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-magic text-primary"></i> Guided Setup</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'redis_concepts' %}" class="btn btn-sm btn-outline-primary">
+                <i class="fas fa-book"></i> Learn Redis Concepts
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Welcome Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm bg-gradient" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+            <div class="card-body text-white text-center py-4">
+                <i class="fas fa-rocket fa-4x mb-3"></i>
+                <h2>Welcome to RedisLens!</h2>
+                <p class="lead">Let's get you started with analyzing your Redis infrastructure in just a few simple steps.</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progress Steps -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-body">
+                <div class="setup-progress">
+                    <div class="row text-center">
+                        <div class="col-md-3 mb-3">
+                            <div class="setup-step">
+                                <div class="step-circle bg-primary text-white">1</div>
+                                <h6 class="mt-2">Choose Analysis Type</h6>
+                                <small class="text-muted">Redis or Sentinel</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="setup-step">
+                                <div class="step-circle bg-secondary text-white">2</div>
+                                <h6 class="mt-2">Configure Connection</h6>
+                                <small class="text-muted">Host, port, and auth</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="setup-step">
+                                <div class="step-circle bg-secondary text-white">3</div>
+                                <h6 class="mt-2">Run Analysis</h6>
+                                <small class="text-muted">Collect data</small>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="setup-step">
+                                <div class="step-circle bg-secondary text-white">4</div>
+                                <h6 class="mt-2">Review Results</h6>
+                                <small class="text-muted">Insights & alerts</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Start Options -->
+<div class="row mb-4">
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100 quick-start-card" onclick="startRedisAnalysis()">
+            <div class="card-header bg-success text-white text-center">
+                <i class="fas fa-database fa-3x mb-2"></i>
+                <h4>Analyze Redis Instance</h4>
+            </div>
+            <div class="card-body">
+                <p class="lead">Perfect for analyzing standalone Redis instances or master-slave setups.</p>
+                
+                <h6><i class="fas fa-check-circle text-success"></i> What you'll get:</h6>
+                <ul>
+                    <li>Configuration analysis</li>
+                    <li>Memory usage breakdown</li>
+                    <li>Performance metrics</li>
+                    <li>Replication status</li>
+                    <li>Anomaly detection</li>
+                </ul>
+                
+                <div class="mt-3">
+                    <strong>Best for:</strong>
+                    <span class="badge bg-success ms-2">Single Redis</span>
+                    <span class="badge bg-info ms-1">Master-Slave</span>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent text-center">
+                <button class="btn btn-success btn-lg" onclick="startRedisAnalysis()">
+                    <i class="fas fa-play"></i> Start Redis Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card border-0 shadow-sm h-100 quick-start-card" onclick="startSentinelAnalysis()">
+            <div class="card-header bg-warning text-dark text-center">
+                <i class="fas fa-shield-alt fa-3x mb-2"></i>
+                <h4>Analyze Redis Sentinel</h4>
+            </div>
+            <div class="card-body">
+                <p class="lead">Essential for monitoring Redis Sentinel high-availability setups.</p>
+                
+                <h6><i class="fas fa-check-circle text-warning"></i> What you'll get:</h6>
+                <ul>
+                    <li>Sentinel configuration review</li>
+                    <li>Master monitoring status</li>
+                    <li>Failover readiness check</li>
+                    <li>Quorum validation</li>
+                    <li>Network connectivity tests</li>
+                </ul>
+                
+                <div class="mt-3">
+                    <strong>Best for:</strong>
+                    <span class="badge bg-warning text-dark ms-2">High Availability</span>
+                    <span class="badge bg-danger ms-1">Production</span>
+                </div>
+            </div>
+            <div class="card-footer bg-transparent text-center">
+                <button class="btn btn-warning btn-lg" onclick="startSentinelAnalysis()">
+                    <i class="fas fa-shield-alt"></i> Start Sentinel Analysis
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Prerequisites -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-list-check"></i> Before You Start
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-server text-primary"></i> For Redis Analysis:</h6>
+                        <ul class="checklist">
+                            <li><i class="fas fa-check text-success"></i> Redis server running and accessible</li>
+                            <li><i class="fas fa-check text-success"></i> Redis port (default: 6379) open</li>
+                            <li><i class="fas fa-check text-success"></i> Authentication credentials (if required)</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-shield-alt text-warning"></i> For Sentinel Analysis:</h6>
+                        <ul class="checklist">
+                            <li><i class="fas fa-check text-success"></i> Sentinel instances running</li>
+                            <li><i class="fas fa-check text-success"></i> Sentinel port (default: 26379) accessible</li>
+                            <li><i class="fas fa-check text-success"></i> Master name configured in Sentinel</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Common Connection Examples -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-code"></i> Connection Examples
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-database text-primary"></i> Redis Connection</h6>
+                        <div class="example-box bg-light p-3 rounded">
+                            <strong>Remote Redis:</strong><br>
+                            <code>Host: redis.example.com<br>Port: 6379<br>Password: your-password</code>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-shield-alt text-warning"></i> Sentinel Connection</h6>
+                        <div class="example-box bg-light p-3 rounded">
+                            <strong>Sentinel Setup:</strong><br>
+                            <code>Host: sentinel.example.com<br>Port: 26379<br>Monitored Master Name: mymaster, app-cache, etc.</code>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Help & Support -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-life-ring"></i> Need Help?
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <i class="fas fa-book fa-2x text-primary mb-2"></i>
+                        <h6>Documentation</h6>
+                        <a href="{% url 'redis_concepts' %}" class="btn btn-outline-primary btn-sm">
+                            Redis Concepts
+                        </a>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <i class="fas fa-video fa-2x text-success mb-2"></i>
+                        <h6>Video Tutorial</h6>
+                        <button class="btn btn-outline-success btn-sm" onclick="showTutorial()">
+                            Watch Tutorial
+                        </button>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <i class="fas fa-comments fa-2x text-info mb-2"></i>
+                        <h6>Get Support</h6>
+                        <button class="btn btn-outline-info btn-sm" onclick="contactSupport()">
+                            Contact Support
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.quick-start-card {
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.quick-start-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+}
+
+.setup-step {
+    text-align: center;
+}
+
+.step-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 20px;
+    font-weight: bold;
+    margin: 0 auto;
+}
+
+.checklist {
+    list-style: none;
+    padding-left: 0;
+}
+
+.checklist li {
+    padding: 5px 0;
+}
+
+.example-box {
+    border: 1px solid #dee2e6;
+}
+
+.bg-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+}
+</style>
+
+<script>
+function startRedisAnalysis() {
+    window.location.href = "{% url 'analyze_redis' %}";
+}
+
+function startSentinelAnalysis() {
+    window.location.href = "{% url 'sentinel_analyze' %}";
+}
+
+function showTutorial() {
+    alert("Video tutorial coming soon! For now, check out the Redis Concepts page for detailed explanations.");
+}
+
+function contactSupport() {
+    alert("Support: Please refer to the Redis Concepts documentation or contact your system administrator.");
+}
+
+// Update progress as user completes steps
+document.addEventListener('DOMContentLoaded', function() {
+    // You can add logic here to track user progress
+    // and update the step indicators accordingly
+});
+</script>
+{% endblock %}

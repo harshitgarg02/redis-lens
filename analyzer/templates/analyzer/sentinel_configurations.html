@@ -1,0 +1,238 @@
+{% extends 'analyzer/base.html' %}
+
+{% block title %}Sentinel Configurations - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-cogs"></i> Sentinel Configurations</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'sentinel_analyze' %}" class="btn btn-primary">
+            <i class="fas fa-shield-alt"></i> New Sentinel Analysis
+        </a>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-filter"></i> Filters
+        </h6>
+    </div>
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="sentinel" class="form-label">Sentinel</label>
+                <input type="text" class="form-control" id="sentinel" name="sentinel" 
+                       value="{{ current_filters.sentinel }}" placeholder="IP address">
+            </div>
+            <div class="col-md-3">
+                <label for="category" class="form-label">Category</label>
+                <select class="form-select" id="category" name="category">
+                    <option value="">All Categories</option>
+                    {% for category in categories %}
+                        <option value="{{ category }}" {% if current_filters.category == category %}selected{% endif %}>
+                            {{ category|title }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="parameter" class="form-label">Parameter</label>
+                <input type="text" class="form-control" id="parameter" name="parameter" 
+                       value="{{ current_filters.parameter }}" placeholder="Parameter name">
+            </div>
+            <div class="col-md-3">
+                <label for="master" class="form-label">Master Name</label>
+                <select class="form-select" id="master" name="master">
+                    <option value="">All Masters</option>
+                    {% for master in masters %}
+                        <option value="{{ master }}" {% if current_filters.master == master %}selected{% endif %}>
+                            {{ master }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-12">
+                <label for="search" class="form-label">Search</label>
+                <input type="text" class="form-control" id="search" name="search" 
+                       value="{{ current_filters.search }}" placeholder="Search parameters, values, or IPs">
+            </div>
+            <div class="col-12">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search"></i> Apply Filters
+                </button>
+                <a href="{% url 'sentinel_configurations' %}" class="btn btn-outline-secondary">
+                    <i class="fas fa-times"></i> Clear Filters
+                </a>
+                {% if page_obj.paginator.count > 0 %}
+                <button type="button" class="btn btn-outline-danger ms-2" onclick="confirmClearAll()">
+                    <i class="fas fa-trash-alt"></i> Clear All
+                </button>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results -->
+<div class="card shadow">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-cogs"></i> Sentinel Configuration Parameters
+        </h6>
+        <div class="export-buttons">
+            {% if page_obj.paginator.count > 0 %}
+            <a href="{% url 'export_configurations_csv' %}?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}sentinel=true" 
+               class="btn btn-success btn-sm">
+                <i class="fas fa-download"></i> Export CSV
+            </a>
+            {% endif %}
+        </div>
+    </div>
+    <div class="card-body">
+        {% if page_obj %}
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <span class="text-muted">
+                    Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} configurations
+                </span>
+            </div>
+            
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th><i class="fas fa-shield-alt"></i> Sentinel</th>
+                            <th><i class="fas fa-crown"></i> Master</th>
+                            <th><i class="fas fa-tag"></i> Category</th>
+                            <th><i class="fas fa-cog"></i> Parameter</th>
+                            <th><i class="fas fa-value"></i> Value</th>
+                            <th><i class="fas fa-clock"></i> Updated</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for config in page_obj %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'sentinel_detail' config.sentinel.id %}" class="text-decoration-none">
+                                    <strong>{{ config.sentinel.ip_address }}:{{ config.sentinel.port }}</strong>
+                                </a>
+                                <div class="small text-muted">
+                                    <span class="badge {% if config.sentinel.status == 'online' %}bg-success{% else %}bg-danger{% endif %}">
+                                        {{ config.sentinel.status|title }}
+                                    </span>
+                                </div>
+                            </td>
+                            <td>
+                                {% if config.master_name %}
+                                    <span class="badge bg-warning text-dark">{{ config.master_name }}</span>
+                                {% else %}
+                                    <span class="text-muted">General</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">{{ config.category|title }}</span>
+                            </td>
+                            <td>
+                                <code>{{ config.parameter_name }}</code>
+                            </td>
+                            <td>
+                                <span class="text-break">{{ config.parameter_value|truncatechars:100 }}</span>
+                                {% if config.parameter_value|length > 100 %}
+                                    <small class="text-muted">(truncated)</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {{ config.updated_at|date:"M d, Y H:i" }}
+                                </small>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Configurations pagination">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page=1">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?{% if request.GET %}{{ request.GET.urlencode }}&{% endif %}page={{ page_obj.paginator.num_pages }}">Last</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No Sentinel Configurations Found</h5>
+                <p class="text-muted">Start by running a Sentinel analysis to populate configuration data.</p>
+                <a href="{% url 'sentinel_analyze' %}" class="btn btn-primary">
+                    <i class="fas fa-shield-alt"></i> Start Sentinel Analysis
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Clear All Confirmation Modal -->
+<div class="modal fade" id="clearAllModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-exclamation-triangle text-warning"></i> Confirm Clear All Data
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to clear <strong>ALL</strong> analysis data?</p>
+                <p>This will permanently delete:</p>
+                <ul>
+                    <li>All Redis analysis sessions and configurations</li>
+                    <li>All Sentinel analysis sessions and configurations</li>
+                    <li>All monitored masters and replication info</li>
+                </ul>
+                <p class="text-danger"><strong>This action cannot be undone!</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form method="post" action="{% url 'clear_all_analysis' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Yes, Clear All Data
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function confirmClearAll() {
+    const modal = new bootstrap.Modal(document.getElementById('clearAllModal'));
+    modal.show();
+}
+</script>
+{% endblock %}

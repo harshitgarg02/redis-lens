@@ -1,0 +1,308 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+
+{% block title %}Analysis Detail - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-chart-line"></i> Analysis Results
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'export_instances_csv' %}" class="btn btn-outline-success">
+                <i class="fas fa-download"></i> Export CSV
+            </a>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<!-- Session Information -->
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-info-circle"></i> Session Information
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <th>Master Instance:</th>
+                        <td><strong>{{ session.master_ip }}:{{ session.master_port }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Session Name:</th>
+                        <td>{{ session.session_name|default:"Unnamed Session" }}</td>
+                    </tr>
+                    <tr>
+                        <th>Status:</th>
+                        <td>
+                            {% if session.status == 'completed' %}
+                                <span class="badge bg-success">{{ session.status|title }}</span>
+                            {% elif session.status == 'partial' %}
+                                <span class="badge bg-warning">{{ session.status|title }}</span>
+                            {% elif session.status == 'failed' %}
+                                <span class="badge bg-danger">{{ session.status|title }}</span>
+                            {% else %}
+                                <span class="badge bg-info">{{ session.status|title }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if session.error_message %}
+                    <tr>
+                        <th>Error:</th>
+                        <td><span class="text-danger">{{ session.error_message }}</span></td>
+                    </tr>
+                    {% endif %}
+                </table>
+            </div>
+            <div class="col-md-6">
+                <table class="table table-sm">
+                    <tr>
+                        <th>Started:</th>
+                        <td>{{ session.analysis_start_time|ist_datetime }}</td>
+                    </tr>
+                    <tr>
+                        <th>Completed:</th>
+                        <td>
+                            {% if session.analysis_end_time %}
+                                {{ session.analysis_end_time|ist_datetime }}
+                            {% else %}
+                                <span class="text-muted">Still running...</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <th>Duration:</th>
+                        <td>{{ session.duration }}</td>
+                    </tr>
+                    <tr>
+                        <th>Success Rate:</th>
+                        <td>
+                            {% if session.total_instances_found > 0 %}
+                                {{ session.successful_connections }}/{{ session.total_instances_found }}
+                                <small class="text-muted">
+                                    ({% widthratio session.successful_connections session.total_instances_found 100 %}%)
+                                </small>
+                            {% else %}
+                                <span class="text-muted">No instances found</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Instances Overview -->
+{% if instances %}
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-server"></i> Discovered Instances ({{ instances.count }})
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Instance</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Version</th>
+                        <th>Uptime</th>
+                        <th>Memory Usage</th>
+                        <th>Clients</th>
+                        <th>Hit Ratio</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instance in instances %}
+                    <tr>
+                        <td>
+                            <a href="{% url 'instance_detail' instance.id %}" class="text-decoration-none">
+                                <strong>{{ instance.ip_address }}:{{ instance.port }}</strong>
+                            </a>
+                            {% if instance.master_ip %}
+                                <br><small class="text-muted">Master: {{ instance.master_ip }}:{{ instance.master_port }}</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if instance.role == 'master' %}
+                                <span class="badge badge-role-master">Master</span>
+                            {% else %}
+                                <span class="badge badge-role-slave">{{ instance.role|title }}</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if instance.status == 'online' %}
+                                <span class="badge bg-success">Online</span>
+                            {% elif instance.status == 'offline' %}
+                                <span class="badge bg-danger">Offline</span>
+                            {% else %}
+                                <span class="badge bg-warning">{{ instance.status|title }}</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ instance.version|default:"-" }}</td>
+                        <td>
+                            {% if instance.uptime_seconds %}
+                                {% if instance.uptime_seconds < 3600 %}
+                                    {{ instance.uptime_seconds|floatformat:0 }}s
+                                {% elif instance.uptime_seconds < 86400 %}
+                                    {% widthratio instance.uptime_seconds 3600 1 %}h
+                                {% else %}
+                                    {% widthratio instance.uptime_seconds 86400 1 %}d
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if instance.used_memory_human and instance.maxmemory_human %}
+                                {{ instance.used_memory_human }} / {{ instance.maxmemory_human }}
+                                {% if instance.memory_usage_percentage %}
+                                    <br><small class="text-muted">({{ instance.memory_usage_percentage }}%)</small>
+                                {% endif %}
+                            {% elif instance.used_memory_human %}
+                                {{ instance.used_memory_human }}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>{{ instance.connected_clients|default:"-" }}</td>
+                        <td>
+                            {% if instance.hit_ratio %}
+                                {{ instance.hit_ratio }}%
+                                {% if instance.hit_ratio >= 90 %}
+                                    <i class="fas fa-check-circle text-success"></i>
+                                {% elif instance.hit_ratio >= 70 %}
+                                    <i class="fas fa-exclamation-triangle text-warning"></i>
+                                {% else %}
+                                    <i class="fas fa-times-circle text-danger"></i>
+                                {% endif %}
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'instance_detail' instance.id %}" 
+                                   class="btn btn-outline-primary btn-sm"
+                                   data-bs-toggle="tooltip" 
+                                   title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'instance_configurations' %}?instance={{ instance.ip_address }}" 
+                                   class="btn btn-outline-secondary btn-sm"
+                                   data-bs-toggle="tooltip" 
+                                   title="View Configurations">
+                                    <i class="fas fa-cogs"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Summary Statistics -->
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-chart-pie"></i> Instance Summary
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h4 class="text-primary">{{ total_count }}</h4>
+                            <small class="text-muted">Total</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="border-end">
+                            <h4 class="text-danger">{{ master_count }}</h4>
+                            <small class="text-muted">Masters</small>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <h4 class="text-info">{{ slave_count }}</h4>
+                        <small class="text-muted">Slaves</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6 mb-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-tools"></i> Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'instance_configurations' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-cogs"></i> View All Configurations
+                    </a>
+                    <a href="{% url 'export_instances_csv' %}" class="btn btn-outline-success">
+                        <i class="fas fa-download"></i> Export Instance Data
+                    </a>
+                    <a href="{% url 'analyze_redis' %}" class="btn btn-primary">
+                        <i class="fas fa-redo"></i> Run New Analysis
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% else %}
+<!-- No Instances Found -->
+<div class="card shadow">
+    <div class="card-body text-center py-5">
+        <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+        <h5 class="text-muted">No Instances Found</h5>
+        <p class="text-muted">
+            {% if session.status == 'failed' %}
+                The analysis failed to discover any Redis instances.
+            {% else %}
+                No Redis instances were discovered in this analysis session.
+            {% endif %}
+        </p>
+        {% if session.error_message %}
+            <div class="alert alert-danger">
+                <strong>Error:</strong> {{ session.error_message }}
+            </div>
+        {% endif %}
+        <a href="{% url 'analyze_redis' %}" class="btn btn-primary">
+            <i class="fas fa-redo"></i> Try Again
+        </a>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize tooltips
+$(document).ready(function() {
+    $('[data-bs-toggle="tooltip"]').tooltip();
+});
+</script>
+{% endblock %}

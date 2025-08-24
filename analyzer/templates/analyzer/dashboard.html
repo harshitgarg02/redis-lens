@@ -1,0 +1,892 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+
+{% block title %}Dashboard - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <div>
+        <h1 class="h2"><i class="fas fa-tachometer-alt text-primary"></i> Welcome, {{ user.first_name|default:user.username }}!</h1>
+        <p class="text-muted mb-0">Monitor and analyze your Redis infrastructure with ease</p>
+    </div>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            {% if not has_recent_analysis %}
+            <a href="{% url 'guided_setup' %}" class="btn btn-success" data-bs-toggle="tooltip"
+                title="Get started with step-by-step guidance">
+                <i class="fas fa-magic"></i> Get Started
+            </a>
+            {% endif %}
+            <a href="{% url 'analysis_selection' %}" class="btn btn-primary" data-bs-toggle="tooltip"
+                title="Choose between Redis and Sentinel analysis">
+                <i class="fas fa-search"></i> Start Analysis
+            </a>
+            <a href="{% url 'anomaly_dashboard' %}" class="btn btn-warning" data-bs-toggle="tooltip"
+                title="Detect and manage Redis anomalies">
+                <i class="fas fa-exclamation-triangle"></i> Anomaly Detection
+            </a>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Main Content Grid -->
+<div class="row">
+    <!-- Left Column: Recent Sessions & Quick Access -->
+    {% if not has_recent_analysis %}
+    <div class="col-lg-12">
+    {% else %}
+    <div class="col-lg-8">
+    {% endif %}
+        <!-- Welcome Guide for New Users -->
+        {% if not has_recent_analysis %}
+        <div class="welcome-section mb-5 mt-1">
+            <!-- Hero Welcome Card -->
+            <div class="card border-0 shadow mb-4 welcome-hero">
+                <div class="card-body p-0">
+                    <div class="welcome-gradient p-4 text-white">
+                        <div class="row align-items-center">
+                            <div class="col-md-8">
+                                <div class="welcome-content">
+                                    <h2 class="mb-3">
+                                        <span class="welcome-wave">👋</span> Welcome to RedisLens!
+                                    </h2>
+                                    <p class="lead mb-3">Transform your Redis infrastructure monitoring with powerful
+                                        analysis tools and actionable insights.</p>
+                                    <div class="welcome-features d-flex flex-wrap gap-3 mb-3">
+                                        <span class="feature-badge">
+                                            <i class="fas fa-chart-line"></i> Performance Insights
+                                        </span>
+                                        <span class="feature-badge">
+                                            <i class="fas fa-shield-alt"></i> HA Monitoring
+                                        </span>
+                                        <span class="feature-badge">
+                                            <i class="fas fa-exclamation-triangle"></i> Anomaly Detection
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-4 text-center">
+                                <div class="welcome-illustration">
+                                    <div class="floating-icon">
+                                        <i class="fas fa-database fa-4x"></i>
+                                    </div>
+                                    <div class="floating-icon delay-1">
+                                        <i class="fas fa-chart-bar fa-2x"></i>
+                                    </div>
+                                    <div class="floating-icon delay-2">
+                                        <i class="fas fa-cogs fa-2x"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+
+            <!-- Quick Start Options -->
+            <div class="row mb-4">
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 quick-start-card redis-card"
+                        onclick="window.location.href='{% url 'analyze_redis' %}'">
+                        <div class="card-body text-center p-4">
+                            <div class="quick-start-icon mb-3">
+                                <i class="fas fa-database fa-3x text-primary"></i>
+                            </div>
+                            <h5 class="card-title mb-3">Start Redis Analysis</h5>
+                            <p class="card-text text-muted mb-3">Analyze Redis instances, master-slave setups, and get
+                                detailed performance insights.</p>
+                            <div class="quick-start-features mb-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-check text-success"></i> Configuration Analysis<br>
+                                    <i class="fas fa-check text-success"></i> Memory Usage<br>
+                                    <i class="fas fa-check text-success"></i> Replication Status
+                                </small>
+                            </div>
+                            <div class="card-action">
+                                <span class="btn btn-primary">
+                                    <i class="fas fa-play"></i> Start Analysis
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6 mb-3">
+                    <div class="card h-100 quick-start-card sentinel-card"
+                        onclick="window.location.href='{% url 'sentinel_analyze' %}'">
+                        <div class="card-body text-center p-4">
+                            <div class="quick-start-icon mb-3">
+                                <i class="fas fa-shield-alt fa-3x text-warning"></i>
+                            </div>
+                            <h5 class="card-title mb-3">Start Sentinel Analysis</h5>
+                            <p class="card-text text-muted mb-3">Monitor Redis Sentinel for high availability and
+                                automatic failover capabilities.</p>
+                            <div class="quick-start-features mb-3">
+                                <small class="text-muted">
+                                    <i class="fas fa-check text-success"></i> Configuration Analysis<br>
+                                    <i class="fas fa-check text-success"></i> Quorum Validation<br>
+                                    <i class="fas fa-check text-success"></i> Master Discovery
+                                </small>
+                            </div>
+                            <div class="card-action">
+                                <span class="btn btn-warning text-dark">
+                                    <i class="fas fa-shield-alt"></i> Start Analysis
+                                </span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if not has_recent_analysis %}
+            <!-- Learning Path -->
+            <div class="card border-0 shadow-sm learning-path-card">
+                <div class="card-header border-0">
+                    <h6 class="mb-0">
+                        <i class="fas fa-graduation-cap text-info"></i> New to Redis? Start Your Learning Journey
+                    </h6>
+                </div>
+                <div class="card-body">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="learning-steps">
+                                <div class="step-item">
+                                    <div class="step-number">1</div>
+                                    <div class="step-content">
+                                        <strong>Learn the Basics</strong>
+                                        <p class="mb-1 small text-muted">Understand Redis, master-slave replication, and
+                                            Sentinel concepts</p>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-number">2</div>
+                                    <div class="step-content">
+                                        <strong>Follow Guided Setup</strong>
+                                        <p class="mb-1 small text-muted">Step-by-step instructions to get started with
+                                            your first analysis</p>
+                                    </div>
+                                </div>
+                                <div class="step-item">
+                                    <div class="step-number">3</div>
+                                    <div class="step-content">
+                                        <strong>Run Your Analysis</strong>
+                                        <p class="mb-1 small text-muted">Connect to your Redis infrastructure and get
+                                            instant insights</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-center">
+                            <div class="d-grid gap-2">
+                                <a href="{% url 'redis_concepts' %}" class="btn btn-info">
+                                    <i class="fas fa-book-open"></i> Learn Redis Concepts
+                                </a>
+                                <a href="{% url 'guided_setup' %}" class="btn btn-outline-info">
+                                    <i class="fas fa-route"></i> Guided Setup
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        <!-- Recent Sentinel Analysis Sessions -->
+        {% if recent_sentinel_sessions %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="fas fa-shield-alt"></i> Recent Sentinel Analysis Sessions
+                </h6>
+                <a href="{% url 'sentinel_sessions' %}" class="btn btn-sm btn-outline-success">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Target</th>
+                                <th>Type</th>
+                                <th>Status</th>
+                                <th>Sentinels/Masters</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in recent_sentinel_sessions %}
+                            <tr>
+                                <td>
+                                    <strong>{{ session.sentinel_ip }}:{{ session.sentinel_port }}</strong>
+                                    {% if session.session_name %}
+                                    <div class="small text-muted">{{ session.session_name }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.analysis_type == 'config' %}
+                                    <span class="badge bg-primary">{{ session.analysis_type|title }}</span>
+                                    {% elif session.analysis_type == 'discovery' %}
+                                    <span class="badge bg-warning text-dark">{{ session.analysis_type|title }}</span>
+                                    {% elif session.analysis_type == 'full' %}
+                                    <span class="badge bg-success">{{ session.analysis_type|title }}</span>
+                                    {% elif session.analysis_type == 'topology' %}
+                                    <span class="badge bg-info text-dark">{{ session.analysis_type|title }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ session.analysis_type|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% elif session.status == 'partial' %}
+                                    <span class="badge bg-warning">Partial</span>
+                                    {% elif session.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                    <span class="badge bg-info">{{ session.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">{{ session.total_sentinels_found|default:0 }}S</span>
+                                    <span class="badge bg-warning">{{ session.total_masters_found|default:0 }}M</span>
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ session.created_at|ist_short }}</small>
+                                </td>
+                                <td>
+                                    <a href="{% url 'sentinel_analysis_detail' session.id %}"
+                                        class="btn btn-sm btn-outline-success">
+                                        <i class="fas fa-eye"></i> View Report
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Redis Analysis Sessions -->
+        {% if recent_redis_sessions %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-database"></i> Recent Redis Analysis Sessions
+                </h6>
+                <a href="{% url 'master_sessions' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Target</th>
+                                <th>Status</th>
+                                <th>Found</th>
+                                <th>Success Rate</th>
+                                <th>Date</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for session in recent_redis_sessions %}
+                            <tr>
+                                <td>
+                                    <strong>{{ session.master_ip }}:{{ session.master_port }}</strong>
+                                    {% if session.session_name %}
+                                    <div class="small text-muted">{{ session.session_name }}</div>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if session.status == 'completed' %}
+                                    <span class="badge bg-success">Completed</span>
+                                    {% elif session.status == 'partial' %}
+                                    <span class="badge bg-warning">Partial</span>
+                                    {% elif session.status == 'failed' %}
+                                    <span class="badge bg-danger">Failed</span>
+                                    {% else %}
+                                    <span class="badge bg-info">{{ session.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <span class="badge bg-secondary">{{ session.total_instances_found }}</span>
+                                </td>
+                                <td>
+                                    {% if session.total_instances_found > 0 %}
+                                        <small>{{ session.successful_connections }}/{{ session.total_instances_found }}</small>
+                                    {% else %}
+                                    <small class="text-muted">-</small>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small class="text-muted">{{ session.created_at|ist_short }}</small>
+                                </td>
+                                <td>
+                                    <a href="{% url 'analysis_detail' session.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="fas fa-eye"></i> View Report
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+        
+
+        <!-- Recent Redis Instances
+        {% if recent_redis_instances %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-server"></i> Quick Access - Recent Redis Instances
+                </h6>
+                <a href="{% url 'instance_configurations' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for instance in recent_redis_instances %}
+                    <div class="col-lg-6 col-md-12 mb-3">
+                        <div class="card border-left-{% if instance.role == 'master' %}danger{% elif instance.status == 'online' %}success{% else %}secondary{% endif %} h-100">
+                            <div class="card-body p-3">
+                                <div class="d-flex justify-content-between align-items-start">
+                                    <div>
+                                        <h6 class="m-0">
+                                            <i class="fas fa-{% if instance.role == 'master' %}crown{% else %}copy{% endif %}"></i>
+                                            {{ instance.ip_address }}:{{ instance.port }}
+                                        </h6>
+                                        <div class="d-flex gap-2 mt-1">
+                                            <span class="badge bg-{% if instance.role == 'master' %}danger{% else %}info{% endif %}">{{ instance.role|title }}</span>
+                                            <span class="badge bg-{% if instance.status == 'online' %}success{% else %}secondary{% endif %}">{{ instance.status|title }}</span>
+                                        </div>
+                                        <small class="text-muted">{{ instance.created_at|ist_short }}</small>
+                                    </div>
+                                    <div class="text-end">
+                                        <a href="{% url 'instance_detail' instance.id %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="fas fa-external-link-alt"></i>
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %} -->
+
+        <!-- Recent Anomalies -->
+        {% if recent_anomalies %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="fas fa-exclamation-triangle"></i> Recent Anomalies
+                </h6>
+                <a href="{% url 'anomaly_dashboard' %}" class="btn btn-sm btn-outline-warning">View All</a>
+            </div>
+            <div class="card-body">
+                {% for anomaly in recent_anomalies %}
+                <div class="d-flex align-items-start mb-3 pb-3 {% if not forloop.last %}border-bottom{% endif %}">
+                    <div class="flex-shrink-0 me-3">
+                        <i class="fas fa-{% if anomaly.rule.severity == 'critical' %}exclamation-circle text-danger{% elif anomaly.rule.severity == 'warning' %}exclamation-triangle text-warning{% else %}info-circle text-info{% endif %} fa-lg"></i>
+                    </div>
+                    <div class="flex-grow-1">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-1">
+                                    <a href="{% url 'anomaly_detail' anomaly.id %}" class="text-decoration-none">
+                                        {{ anomaly.rule.rule_id }}
+                                    </a>
+                                </h6>
+                                <p class="mb-1 text-muted small">{{ anomaly.rule.anomaly_description|truncatechars:80 }}</p>
+                                <div class="d-flex gap-2">
+                                    <span class="badge bg-secondary">{{ anomaly.rule.get_severity_display }}</span>
+                                    <span class="badge bg-{% if anomaly.status == 'detected' %}danger{% elif anomaly.status == 'acknowledged' %}warning{% elif anomaly.status == 'resolved' %}success{% else %}secondary{% endif %}">{{ anomaly.get_status_display }}</span>
+                                </div>
+                                <small class="text-muted">
+                                    <i class="fas fa-server me-1"></i>
+                                    {% if anomaly.redis_instance %}
+                                    {{ anomaly.redis_instance }}
+                                    {% else %}
+                                    {{ anomaly.sentinel_instance }}
+                                    {% endif %}
+                                    | {{ anomaly.detected_at|ist_short }}
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Right Column: Quick Actions & Navigation -->
+    <div class="col-lg-4">
+        <!-- Quick Actions -->
+        {% if has_recent_analysis %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3">
+                <h6 class="m-0 font-weight-bold text-primary">
+                    <i class="fas fa-rocket"></i> Quick Actions
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+
+                    <div class="mb-2">
+                        <small class="text-muted fw-bold">VIEW DATA</small>
+                    </div>
+                    <a href="{% url 'master_sessions' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-history"></i> Recent Redis Analysis
+                    </a>
+                    <a href="{% url 'sentinel_sessions' %}" class="btn btn-outline-success">
+                        <i class="fas fa-history"></i> Recent Sentinel Analysis
+                    </a>
+                    <a href="{% url 'instance_configurations' %}" class="btn btn-outline-secondary">
+                        <i class="fas fa-cogs"></i> Redis Configurations
+                    </a>
+                    <a href="{% url 'sentinel_configurations' %}" class="btn btn-outline-info">
+                        <i class="fas fa-cogs"></i> Sentinel Configurations
+                    </a>
+                    <a href="{% url 'monitored_masters' %}" class="btn btn-outline-warning">
+                        <i class="fas fa-crown"></i> Monitored Masters
+                    </a>
+
+                    {% if total_instances > 0 or total_sentinels > 0 %}
+                    <hr class="my-3">
+                    <button type="button" class="btn btn-outline-danger" onclick="confirmClearAll()">
+                        <i class="fas fa-trash-alt"></i> Clear All Data
+                    </button>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Sentinel Instances -->
+        {% if recent_sentinel_instances %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-success">
+                    <i class="fas fa-shield-alt"></i> Recent Sentinels
+                </h6>
+                <a href="{% url 'sentinel_configurations' %}" class="btn btn-sm btn-outline-success">View All</a>
+            </div>
+            <div class="card-body">
+                {% for sentinel in recent_sentinel_instances %}
+                <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+                    <div>
+                        <h6 class="m-0">{{ sentinel.ip_address }}:{{ sentinel.port }}</h6>
+                        <small class="text-muted">
+                            <span class="badge bg-{% if sentinel.status == 'online' %}success{% else %}secondary{% endif %}">{{ sentinel.status|title }}</span>
+                            {{ sentinel.created_at|ist_short }}
+                        </small>
+                    </div>
+                    <div>
+                        <a href="{% url 'sentinel_detail' sentinel.id %}" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-eye"></i>
+                        </a>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Recent Monitored Masters -->
+        {% if recent_monitored_masters %}
+        <div class="card shadow mb-4">
+            <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+                <h6 class="m-0 font-weight-bold text-warning">
+                    <i class="fas fa-crown"></i> Recent Monitored Masters
+                </h6>
+                <a href="{% url 'monitored_masters' %}" class="btn btn-sm btn-outline-warning">View All</a>
+            </div>
+            <div class="card-body">
+                {% for master in recent_monitored_masters %}
+                <div class="d-flex justify-content-between align-items-center py-2 {% if not forloop.last %}border-bottom{% endif %}">
+                    <div>
+                        <h6 class="m-0">{{ master.master_name }}</h6>
+                        <small class="text-muted">
+                            {{ master.master_ip }}:{{ master.master_port }}
+                            <span class="badge bg-{% if master.num_slaves < 3 %}danger{% else %}secondary{% endif %}">{{ master.num_slaves|default:0 }} slaves</span>
+                        </small>
+                    </div>
+                    <div>
+                        {% if master.redis_instance %}
+                            <a href="{% url 'instance_detail' master.redis_instance.id %}" class="btn btn-sm btn-outline-warning">
+                                <i class="fas fa-eye"></i>
+                            </a>
+                        {% else %}
+                        <span class="text-muted">-</span>
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+</div>
+
+<!-- Clear All Confirmation Modal -->
+<div class="modal fade" id="clearAllModal" tabindex="-1" aria-labelledby="clearAllModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title" id="clearAllModalLabel">
+                    <i class="fas fa-exclamation-triangle"></i> Confirm Clear All Data
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-warning">
+                    <i class="fas fa-warning"></i>
+                    <strong>Warning!</strong> This action cannot be undone.
+                </div>
+                <p>You are about to delete <strong>ALL</strong> analysis data including:</p>
+                <ul>
+                    <li><strong>{{ total_redis_sessions|add:total_sentinel_sessions }}</strong> analysis sessions</li>
+                    <li><strong>{{ total_instances }}</strong> Redis instances</li>
+                    <li><strong>{{ total_sentinels }}</strong> Sentinels</li>
+                    <li>All configuration parameters</li>
+                    <li>All replication information</li>
+                </ul>
+                <p class="text-danger"><strong>This action is permanent and cannot be undone!</strong></p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+                <form method="post" action="{% url 'clear_all_analysis' %}" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">
+                        <i class="fas fa-trash-alt"></i> Yes, Clear All Data
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* Welcome Section Styles */
+    .welcome-section {
+        margin-top: -10px;
+    }
+
+    .welcome-hero {
+        overflow: hidden;
+        border-radius: 15px !important;
+    }
+
+    .welcome-gradient {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        position: relative;
+    }
+
+    .welcome-gradient::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grain" width="100" height="100" patternUnits="userSpaceOnUse"><circle cx="25" cy="25" r="1" fill="white" opacity="0.1"/><circle cx="75" cy="75" r="1" fill="white" opacity="0.05"/><circle cx="50" cy="10" r="0.5" fill="white" opacity="0.08"/></pattern></defs><rect width="100" height="100" fill="url(%23grain)"/></svg>');
+        opacity: 0.3;
+    }
+
+    .welcome-content {
+        position: relative;
+        z-index: 2;
+    }
+
+    .welcome-wave {
+        display: inline-block;
+        animation: wave 2s infinite;
+        transform-origin: 70% 70%;
+    }
+
+    @keyframes wave {
+
+        0%,
+        100% {
+            transform: rotate(0deg);
+        }
+
+        10%,
+        30%,
+        50%,
+        70%,
+        90% {
+            transform: rotate(14deg);
+        }
+
+        20%,
+        40%,
+        60%,
+        80% {
+            transform: rotate(-8deg);
+        }
+    }
+
+    .feature-badge {
+        background: rgba(255, 255, 255, 0.2);
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        border-radius: 20px;
+        padding: 5px 12px;
+        font-size: 0.85rem;
+        color: white;
+        backdrop-filter: blur(10px);
+    }
+
+    .welcome-illustration {
+        position: relative;
+        height: 120px;
+    }
+
+    .floating-icon {
+        position: absolute;
+        animation: float 3s ease-in-out infinite;
+        color: rgba(255, 255, 255, 0.8);
+    }
+
+    .floating-icon:nth-child(1) {
+        top: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+    }
+
+    .floating-icon:nth-child(2) {
+        top: 40px;
+        left: 20%;
+        animation-delay: -1s;
+    }
+
+    .floating-icon:nth-child(3) {
+        top: 40px;
+        right: 20%;
+        animation-delay: -2s;
+    }
+
+    @keyframes float {
+
+        0%,
+        100% {
+            transform: translateY(0px);
+        }
+
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    /* Quick Start Cards */
+    .quick-start-card {
+        cursor: pointer;
+        transition: all 0.3s ease;
+        border: 2px solid transparent;
+        border-radius: 12px;
+    }
+
+    .quick-start-card:hover {
+        transform: translateY(-8px);
+        box-shadow: 0 12px 30px rgba(0, 0, 0, 0.15) !important;
+    }
+
+    .redis-card:hover {
+        border-color: #0d6efd;
+        box-shadow: 0 12px 30px rgba(13, 110, 253, 0.2) !important;
+    }
+
+    .sentinel-card:hover {
+        border-color: #ffc107;
+        box-shadow: 0 12px 30px rgba(255, 193, 7, 0.2) !important;
+    }
+
+    .quick-start-icon {
+        position: relative;
+    }
+
+    .quick-start-icon::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(45deg, rgba(13, 110, 253, 0.1), rgba(13, 110, 253, 0.05));
+        border-radius: 50%;
+        z-index: -1;
+        transition: all 0.3s ease;
+    }
+
+    .sentinel-card .quick-start-icon::before {
+        background: linear-gradient(45deg, rgba(255, 193, 7, 0.1), rgba(255, 193, 7, 0.05));
+    }
+
+    .quick-start-card:hover .quick-start-icon::before {
+        transform: translate(-50%, -50%) scale(1.2);
+    }
+
+    .quick-start-features {
+        line-height: 1.6;
+    }
+
+    .card-action {
+        margin-top: auto;
+    }
+
+    .quick-start-card:hover .card-action .btn {
+        transform: scale(1.05);
+    }
+
+    /* Learning Path */
+    .learning-path-card {
+        border-radius: 12px;
+        background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    }
+
+    .learning-steps {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .step-item {
+        display: flex;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .step-number {
+        min-width: 30px;
+        height: 30px;
+        background: linear-gradient(135deg, #17a2b8, #138496);
+        color: white;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        font-size: 0.9rem;
+        flex-shrink: 0;
+    }
+
+    .step-content {
+        flex: 1;
+    }
+
+    .step-content strong {
+        color: #495057;
+        font-size: 0.95rem;
+    }
+
+    /* Responsive Adjustments */
+    @media (max-width: 768px) {
+        .welcome-gradient {
+            text-align: center;
+        }
+
+        .welcome-features {
+            justify-content: center;
+        }
+
+        .feature-badge {
+            font-size: 0.75rem;
+            padding: 4px 8px;
+        }
+
+        .floating-icon {
+            position: static;
+            display: inline-block;
+            margin: 0 10px;
+            animation: none;
+        }
+
+        .welcome-illustration {
+            height: auto;
+            margin-top: 20px;
+        }
+
+        .quick-start-card:hover {
+            transform: none;
+        }
+
+        .learning-steps {
+            gap: 10px;
+        }
+
+        .step-item {
+            gap: 10px;
+        }
+    }
+
+    /* Animation for page load */
+    .welcome-section {
+        animation: slideInUp 0.6s ease-out;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    /* Smooth transitions for all interactive elements */
+    .welcome-section * {
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function confirmClearAll() {
+        var modal = new bootstrap.Modal(document.getElementById('clearAllModal'));
+        modal.show();
+    }
+
+    // Add click tracking for analytics (optional)
+    document.addEventListener('DOMContentLoaded', function () {
+        // Track welcome section interactions
+        const quickStartCards = document.querySelectorAll('.quick-start-card');
+        quickStartCards.forEach(card => {
+            card.addEventListener('click', function () {
+                // Add subtle click feedback
+                this.style.transform = 'scale(0.98)';
+                setTimeout(() => {
+                    this.style.transform = '';
+                }, 150);
+            });
+        });
+
+        // Add loading animation delay for staggered effect
+        const welcomeElements = document.querySelectorAll('.welcome-section .card');
+        welcomeElements.forEach((element, index) => {
+            element.style.animationDelay = `${index * 0.1}s`;
+        });
+    });
+</script>
+{% endblock %}

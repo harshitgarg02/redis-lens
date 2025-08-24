@@ -1,0 +1,575 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+
+{% block title %}{{ instance.ip_address }}:{{ instance.port }} - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-server"></i> {{ instance.ip_address }}:{{ instance.port }}
+        {% if instance.role == 'master' %}
+            <span class="badge badge-role-master ms-2">Master</span>
+        {% else %}
+            <span class="badge badge-role-slave ms-2">{{ instance.role|title }}</span>
+        {% endif %}
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'instance_configurations' %}?instance={{ instance.ip_address }}" 
+               class="btn btn-outline-primary">
+                <i class="fas fa-cogs"></i> View Configs
+            </a>
+            <a href="{% url 'instance_anomalies' instance.id %}" 
+               class="btn btn-outline-warning">
+                <i class="fas fa-exclamation-triangle"></i> 
+                Anomalies ({{ anomaly_count }})
+            </a>
+        </div>
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back
+        </a>
+    </div>
+</div>
+
+<!-- Instance Overview -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <!-- Instance Information -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Instance Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            {% if instance.role == 'master' and instance.master_name %}
+                            <tr>
+                                <th>Master Name:</th>
+                                <td><strong>{{ instance.master_name }}</strong></td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>IP Address:</th>
+                                <td><strong>{{ instance.ip_address }}</strong></td>
+                            </tr>
+                            
+                            <tr>
+                                <th>Port:</th>
+                                <td>{{ instance.port }}</td>
+                            </tr>
+                            {% if instance.master_ip %}
+                            <tr>
+                                <th>Master:</th>
+                                <td>{{ instance.master_ip }}:{{ instance.master_port }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Role:</th>
+                                <td>
+                                    {% if instance.role == 'master' %}
+                                        <span class="badge badge-role-master">Master</span>
+                                    {% else %}
+                                        <span class="badge badge-role-slave">{{ instance.role|title }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Status:</th>
+                                <td>
+                                    {% if instance.status == 'online' %}
+                                        <span class="badge bg-success">Online</span>
+                                    {% elif instance.status == 'offline' %}
+                                        <span class="badge bg-danger">Offline</span>
+                                    {% else %}
+                                        <span class="badge bg-warning">{{ instance.status|title }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-sm">
+                            
+                            <tr>
+                                <th>Uptime:</th>
+                                <td>
+                                    {% if instance.uptime_seconds %}
+                                        {% if instance.uptime_seconds < 3600 %}
+                                            {{ instance.uptime_seconds|floatformat:0 }} seconds
+                                        {% elif instance.uptime_seconds < 86400 %}
+                                            {% widthratio instance.uptime_seconds 3600 1 %} hours
+                                        {% else %}
+                                            {% widthratio instance.uptime_seconds 86400 1 %} days
+                                        {% endif %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Connected Clients:</th>
+                                <td>
+                                    {% if instance.connected_clients %}
+                                        {{ instance.connected_clients }}{% if instance.max_clients %}/{{ instance.max_clients }}{% endif %}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>Total Commands:</th>
+                                <td>{{ instance.total_commands_processed|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Version:</th>
+                                <td>{{ instance.version|default:"-" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Last Updated:</th>
+                                <td>{{ instance.updated_at|ist_datetime }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Replication Information -->
+        {% if master_replications or slave_replications %}
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-sitemap"></i> Replication Information
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if master_replications %}
+                    <h6><i class="fas fa-arrow-down"></i> Slaves of this Master:</h6>
+                    <div class="table-responsive mb-3">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Slave Instance</th>
+                                    <th>Replication State</th>
+                                    <th>Lag (seconds)</th>
+                                    <th>Priority</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for repl in master_replications %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'instance_detail' repl.slave_instance.id %}">
+                                            {{ repl.slave_instance.ip_address }}:{{ repl.slave_instance.port }}
+                                        </a>
+                                    </td>
+                                    <td>{{ repl.replication_state|default:"-" }}</td>
+                                    <td>{{ repl.lag_in_seconds|default_if_none:"-" }}</td>
+                                    <td>{{ repl.priority|default_if_none:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+                
+                {% if slave_replications %}
+                    <h6><i class="fas fa-arrow-up"></i> Master of this Slave:</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Master Instance</th>
+                                    <th>Replication State</th>
+                                    <th>Lag (seconds)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for repl in slave_replications %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'instance_detail' repl.master_instance.id %}">
+                                            {{ repl.master_instance.ip_address }}:{{ repl.master_instance.port }}
+                                        </a>
+                                    </td>
+                                    <td>{{ repl.replication_state|default:"-" }}</td>
+                                    <td>{{ repl.lag_in_seconds|default_if_none:"-" }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+        
+        <!-- Raw Redis INFO Output -->
+        <div class="card shadow mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <button class="btn btn-link text-decoration-none p-0 w-100 text-start" 
+                            type="button" 
+                            data-bs-toggle="collapse" 
+                            data-bs-target="#rawInfoCollapse" 
+                            aria-expanded="false" 
+                            aria-controls="rawInfoCollapse">
+                        <i class="fas fa-terminal me-2"></i> Raw Redis INFO Output
+                        <i class="fas fa-chevron-down float-end mt-1"></i>
+                    </button>
+                </h6>
+            </div>
+            <div class="collapse" id="rawInfoCollapse">
+                <div class="card-body p-0">
+                    {% if instance.raw_info_output %}
+                        <div style="max-height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                            <pre class="mb-0 p-3" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 12px; line-height: 1.4; color: #333;">{{ instance.raw_info_output }}</pre>
+                        </div>
+                    {% else %}
+                        <div class="p-3 text-center text-muted">
+                            <i class="fas fa-info-circle fa-2x mb-2"></i>
+                            <p class="mb-0">Raw INFO output not available for this instance.</p>
+                            <small>This data is captured during analysis for newer instances.</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <!-- Memory Usage -->
+        <div class="card shadow mb-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-memory"></i> Memory Usage
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if instance.used_memory_human %}
+                    <div class="mb-2">
+                        <strong>Used:</strong> {{ instance.used_memory_human }}
+                    </div>
+                    {% if instance.maxmemory_human %}
+                        <div class="mb-2">
+                            <strong>Max:</strong> {{ instance.maxmemory_human }}
+                        </div>
+                        {% if instance.memory_usage_percentage %}
+                            <div class="progress mb-2">
+                                <div class="progress-bar 
+                                    {% if instance.memory_usage_percentage >= 90 %}bg-danger
+                                    {% elif instance.memory_usage_percentage >= 75 %}bg-warning
+                                    {% else %}bg-success{% endif %}" 
+                                     style="width: {{ instance.memory_usage_percentage }}%">
+                                    {{ instance.memory_usage_percentage }}%
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted">No memory information available</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Hit Ratio -->
+        <div class="card shadow">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-bullseye"></i> Cache Performance
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if instance.hit_ratio %}
+                    <div class="text-center">
+                        <h4 class="
+                            {% if instance.hit_ratio >= 90 %}text-success
+                            {% elif instance.hit_ratio >= 70 %}text-warning
+                            {% else %}text-danger{% endif %}">
+                            {{ instance.hit_ratio }}%
+                        </h4>
+                        <small class="text-muted">Hit Ratio</small>
+                    </div>
+                    {% if instance.keyspace_hits and instance.keyspace_misses %}
+                        <hr>
+                        <div class="row text-center">
+                            <div class="col-6">
+                                <div>{{ instance.keyspace_hits }}</div>
+                                <small class="text-success">Hits</small>
+                            </div>
+                            <div class="col-6">
+                                <div>{{ instance.keyspace_misses }}</div>
+                                <small class="text-danger">Misses</small>
+                            </div>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <p class="text-muted">No cache statistics available</p>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Anomaly Summary -->
+        <div class="card shadow mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-exclamation-triangle"></i> Configuration Health
+                </h6>
+            </div>
+            <div class="card-body">
+                {% if anomaly_count > 0 %}
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="h5 text-danger">{{ critical_anomalies }}</div>
+                            <small class="text-muted">Critical</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h5 text-warning">{{ warning_anomalies }}</div>
+                            <small class="text-muted">Warning</small>
+                        </div>
+                        <div class="col-4">
+                            <div class="h5 text-info">{{ unresolved_anomalies }}</div>
+                            <small class="text-muted">Unresolved</small>
+                        </div>
+                    </div>
+                    <hr>
+                    <div class="d-grid">
+                        <a href="{% url 'instance_anomalies' instance.id %}" class="btn btn-warning btn-sm">
+                            <i class="fas fa-exclamation-triangle"></i> View All Anomalies
+                        </a>
+                    </div>
+                    {% if anomalies %}
+                        <hr>
+                        <small class="text-muted">Recent Issues:</small>
+                        {% for anomaly in anomalies %}
+                            <div class="mt-2 p-2 border-start border-{% if anomaly.rule.severity == 'critical' %}danger{% elif anomaly.rule.severity == 'warning' %}warning{% else %}info{% endif %} border-3 bg-light">
+                                <div class="d-flex justify-content-between">
+                                    <span class="badge bg-secondary">{{ anomaly.rule.rule_id }}</span>
+                                    <span class="badge bg-{% if anomaly.rule.severity == 'critical' %}danger{% elif anomaly.rule.severity == 'warning' %}warning{% else %}info{% endif %}">{{ anomaly.rule.get_severity_display }}</span>
+                                </div>
+                                <div class="mt-1">
+                                    <small>{{ anomaly.rule.anomaly_description|truncatechars:80 }}</small>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+                {% else %}
+                    <div class="text-center text-success">
+                        <i class="fas fa-check-circle fa-2x mb-2"></i>
+                        <div class="h6">No Issues Detected</div>
+                        <small class="text-muted">Configuration appears healthy</small>
+                    </div>
+                    <hr>
+                    <div class="d-grid">
+                        <form method="post" action="{% url 'instance_anomalies' instance.id %}">
+                            {% csrf_token %}
+                            <input type="hidden" name="action" value="detect">
+                            <button type="submit" class="btn btn-outline-primary btn-sm">
+                                <i class="fas fa-search"></i> Run Anomaly Detection
+                            </button>
+                        </form>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Detailed Keyspace Information -->
+        {% if keyspace_info %}
+        <div class="card shadow mt-3">
+            <div class="card-header">
+                <h6 class="card-title mb-0">
+                    <i class="fas fa-database"></i> Detailed Keyspace Info
+                </h6>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-sm table-striped">
+                        <thead>
+                            <tr>
+                                <th>Database</th>
+                                <th>Keys</th>
+                                <th>Expires</th>
+                                <th>Avg TTL</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for db in keyspace_info %}
+                            <tr>
+                                <td><strong>{{ db.database_name }}</strong></td>
+                                <td>
+                                    <span class="badge bg-primary">
+                                        {{ db.keys_count|floatformat:0 }}
+                                    </span>
+                                </td>
+                                <td>
+                                    {% if db.expires_count %}
+                                        <span class="badge bg-warning">
+                                            {{ db.expires_count|floatformat:0 }}
+                                        </span>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if db.avg_ttl %}
+                                        {% if db.avg_ttl < 1000 %}
+                                            {{ db.avg_ttl }}ms
+                                        {% elif db.avg_ttl < 60000 %}
+                                            {% widthratio db.avg_ttl 1000 1 %}s
+                                        {% elif db.avg_ttl < 3600000 %}
+                                            {% widthratio db.avg_ttl 60000 1 %}min
+                                        {% else %}
+                                            {% widthratio db.avg_ttl 3600000 1 %}h
+                                        {% endif %}
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                {% if keyspace_info|length > 1 %}
+                <hr class="mt-3 mb-2">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="text-muted small">Total Databases</div>
+                        <div class="fw-bold">{{ keyspace_info|length }}</div>
+                    </div>
+                    <div class="col-6">
+                        <div class="text-muted small">Total Keys</div>
+                        <div class="fw-bold">{{ instance.total_keys|default:"0"|floatformat:0 }}</div>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+
+
+<!-- Configuration Parameters -->
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-cogs"></i> Configuration Parameters ({{ configurations.count }})
+        </h5>
+    </div>
+    <div class="card-body">
+        {% if configs_by_category %}
+            <div class="accordion" id="configAccordion">
+                {% for category, configs in configs_by_category.items %}
+                <div class="accordion-item">
+                    <h2 class="accordion-header" id="heading{{ forloop.counter }}">
+                        <button class="accordion-button {% if forloop.counter != 1 %}collapsed{% endif %}" 
+                                type="button" 
+                                data-bs-toggle="collapse" 
+                                data-bs-target="#collapse{{ forloop.counter }}"
+                                aria-expanded="{% if forloop.counter == 1 %}true{% else %}false{% endif %}">
+                            <strong>{{ category|title }} Configuration</strong>
+                            <span class="badge bg-secondary ms-2">{{ configs|length }}</span>
+                        </button>
+                    </h2>
+                    <div id="collapse{{ forloop.counter }}" 
+                         class="accordion-collapse collapse {% if forloop.counter == 1 %}show{% endif %}" 
+                         data-bs-parent="#configAccordion">
+                        <div class="accordion-body">
+                            <div class="table-responsive">
+                                <table class="table table-sm table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Parameter</th>
+                                            <th>Value</th>
+                                            <th>Status</th>
+                                            <th>Updated</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for config in configs %}
+                                        <tr {% if config.has_anomaly %}class="table-{% if config.highest_severity == 'critical' %}danger{% elif config.highest_severity == 'warning' %}warning{% else %}info{% endif %}"{% endif %}>
+                                            <td>
+                                                <code>{{ config.parameter_name }}</code>
+                                                {% if config.has_anomaly %}
+                                                    <i class="fas fa-exclamation-triangle text-{% if config.highest_severity == 'critical' %}danger{% elif config.highest_severity == 'warning' %}warning{% else %}info{% endif %} ms-1" 
+                                                       data-bs-toggle="tooltip" 
+                                                       title="This parameter has {{ config.anomaly_count }} detected anomal{{ config.anomaly_count|pluralize:'y,ies' }}"></i>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span data-bs-toggle="tooltip" title="{{ config.parameter_value }}">
+                                                    {% if config.parameter_value|length > 80 %}
+                                                        {{ config.parameter_value|slice:":80" }}...
+                                                    {% else %}
+                                                        {{ config.parameter_value }}
+                                                    {% endif %}
+                                                </span>
+                                            </td>
+                                            <td>
+                                                {% if config.has_anomaly %}
+                                                    <span class="badge bg-{% if config.highest_severity == 'critical' %}danger{% elif config.highest_severity == 'warning' %}warning{% else %}info{% endif %}">
+                                                        {{ config.anomaly_count }} Issue{{ config.anomaly_count|pluralize }}
+                                                    </span>
+                                                    {% if config.related_anomalies|length > 0 %}
+                                                        <a href="{% url 'anomaly_detail' config.related_anomalies.0.id %}" 
+                                                           class="btn btn-link btn-sm p-0 ms-1" 
+                                                           data-bs-toggle="tooltip" 
+                                                           title="View anomaly details">
+                                                            <i class="fas fa-external-link-alt"></i>
+                                                        </a>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="badge bg-success">OK</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <small class="text-muted">
+                                                    {{ config.updated_at|ist_short }}
+                                                </small>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-cogs fa-3x text-muted mb-3"></i>
+                <h6 class="text-muted">No Configuration Data Available</h6>
+                <p class="text-muted">Configuration parameters will appear here after analysis.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Initialize tooltips
+$(document).ready(function() {
+    $('[data-bs-toggle="tooltip"]').tooltip();
+    
+    // Handle chevron rotation for Raw INFO collapse
+    $('#rawInfoCollapse').on('show.bs.collapse', function () {
+        $('[data-bs-target="#rawInfoCollapse"] .fa-chevron-down').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+    });
+    
+    $('#rawInfoCollapse').on('hide.bs.collapse', function () {
+        $('[data-bs-target="#rawInfoCollapse"] .fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+    });
+});
+</script>
+{% endblock %}

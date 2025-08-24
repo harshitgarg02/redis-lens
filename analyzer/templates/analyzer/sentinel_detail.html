@@ -1,0 +1,556 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+
+{% block title %}Sentinel Details - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-shield-alt"></i> Sentinel Details
+        <small class="text-muted">{{ sentinel.ip_address }}:{{ sentinel.port }}</small>
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Dashboard
+            </a>
+            <a href="{% url 'sentinel_analyze' %}" class="btn btn-primary">
+                <i class="fas fa-shield-alt"></i> New Analysis
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Sentinel Info -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Sentinel Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tr>
+                        <td><strong>IP Address:</strong></td>
+                        <td><code>{{ sentinel.ip_address }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Port:</strong></td>
+                        <td><code>{{ sentinel.port }}</code></td>
+                    </tr>
+                    <tr>
+                        <td><strong>Status:</strong></td>
+                        <td>
+                            <span class="badge {% if sentinel.status == 'online' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ sentinel.status|title }}
+                            </span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Version:</strong></td>
+                        <td>{{ sentinel.version|default:"N/A" }}</td>
+                    </tr>
+                    <!-- <tr>
+                        <td><strong>Uptime:</strong></td>
+                        <td>
+                            {% if sentinel.uptime_seconds %}
+                                {{ sentinel.uptime_seconds }} seconds
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr> -->
+                    <tr>
+                        <td><strong>Sentinel ID:</strong></td>
+                        <td>
+                            {% if sentinel.sentinel_id %}
+                                <code class="small">{{ sentinel.sentinel_id }}</code>
+                            {% else %}
+                                N/A
+                            {% endif %}
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Masters Monitored:</strong></td>
+                        <td>
+                            <span class="badge bg-primary">{{ sentinel.masters_count|default:"0" }}</span>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td><strong>Last Updated:</strong></td>
+                                                        <td>{{ sentinel.updated_at|ist_datetime }}</td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-6">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-pie"></i> Quick Stats
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-primary">{{ configurations.count }}</h4>
+                            <small class="text-muted">Configurations</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-warning">{{ monitored_masters.count }}</h4>
+                        <small class="text-muted">Monitored Masters</small>
+                    </div>
+                </div>
+                
+                <hr class="my-3">
+                
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-info">{{ configs_by_category|length }}</h4>
+                            <small class="text-muted">Categories</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-success">
+                            {% if sentinel.status == 'online' %}
+                                <i class="fas fa-check-circle"></i>
+                            {% else %}
+                                <i class="fas fa-times-circle"></i>
+                            {% endif %}
+                        </h4>
+                        <small class="text-muted">Status</small>
+                    </div>
+                </div>
+                
+                <hr class="my-3">
+                
+                <div class="row text-center">
+                    <div class="col-6">
+                        <div class="border-end">
+                            <h4 class="text-dark">
+                                {% if sentinel.connected_clients %}
+                                    {{ sentinel.connected_clients }}{% if sentinel.max_clients %}/{{ sentinel.max_clients }}{% endif %}
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </h4>
+                            <small class="text-muted">Connected/Max Clients</small>
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <h4 class="text-secondary">
+                            {% if sentinel.uptime_seconds %}
+                                {% if sentinel.uptime_seconds < 3600 %}
+                                    {% widthratio sentinel.uptime_seconds 60 1 %}m
+                                {% elif sentinel.uptime_seconds < 86400 %}
+                                    {% widthratio sentinel.uptime_seconds 3600 1 %}h
+                                {% else %}
+                                    {% widthratio sentinel.uptime_seconds 86400 1 %}d
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">-</span>
+                            {% endif %}
+                        </h4>
+                        <small class="text-muted">Uptime</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Raw Sentinel INFO Output -->
+        <div class="card shadow-sm mt-3 border-0 bg-light">
+            <div class="card-body p-0">
+                <div class="d-grid">
+                    <button class="btn btn-outline-secondary btn-sm text-start rounded-3" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#sentinelRawInfoCollapse" aria-expanded="false"
+                        aria-controls="sentinelRawInfoCollapse">
+                        <i class="fas fa-terminal me-2 text-muted"></i>
+                        <small class="fw-medium">Raw Sentinel INFO Output</small>
+                        <i class="fas fa-chevron-down float-end mt-1"></i>
+                    </button>
+                </div>
+                
+                <div class="collapse mt-2" id="sentinelRawInfoCollapse">
+                    {% if sentinel.raw_info_output %}
+                        <div class="border rounded-2" style="max-height: 350px; overflow-y: auto; background-color: #f8f9fa;">
+                            <pre class="mb-0 p-3 small" style="white-space: pre-wrap; font-family: 'Courier New', monospace; font-size: 11px; line-height: 1.3; color: #333;">{{ sentinel.raw_info_output }}</pre>
+                        </div>
+                    {% else %}
+                        <div class="text-center text-muted py-3 border rounded-2 bg-white">
+                            <i class="fas fa-info-circle mb-2"></i>
+                            <div class="small">Raw INFO output not available</div>
+                            <small class="text-muted">Captured for newer Sentinel instances</small>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+<!-- Monitored Masters -->
+{% if monitored_masters %}
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-crown"></i> Monitored Masters
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped table-hover">
+                <thead>
+                    <tr>
+                        <th width="5%"></th>
+                        <th>Master Name</th>
+                        <th>Address</th>
+                        <th>Status</th>
+                        <th>Quorum</th>
+                        <th>Slaves</th>
+                        <th>Memory Usage</th>
+                        <th>Total Keys</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for master in monitored_masters %}
+                    <!-- Compact Row -->
+                    <tr class="master-row" data-master-id="{{ master.id }}" style="cursor: pointer;">
+                        <td>
+                            <button class="btn btn-sm btn-link text-muted expand-btn" type="button">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </td>
+                        <td><strong class="text-primary">{{ master.master_name }}</strong></td>
+                        <td><code>{{ master.master_ip }}:{{ master.master_port }}</code></td>
+                        <td>
+                            <span class="badge {% if master.status == 'master' %}bg-success{% elif master.status == 'down' %}bg-danger{% else %}bg-warning{% endif %}">
+                                {{ master.status|title }}
+                            </span>
+                        </td>
+                        <td><span class="badge bg-info">{{ master.quorum|default:"-" }}</span></td>
+                        <td><span class="badge {% if master.num_slaves|default:0 < 3 %}bg-danger{% else %}bg-secondary{% endif %}">{{ master.num_slaves|default:"0" }}</span></td>
+                        <td>
+                            {% if master.redis_instance %}
+                                <div class="text-center">
+                                    {% if master.redis_instance.used_memory_human and master.redis_instance.maxmemory_human %}
+                                        <div class="fw-bold">
+                                            <span class="text-warning">{{ master.redis_instance.used_memory_human }}</span>
+                                            <span class="text-muted">/</span>
+                                            <span class="text-info">{{ master.redis_instance.maxmemory_human }}</span>
+                                        </div>
+                                    {% elif master.redis_instance.used_memory_human %}
+                                        <div class="fw-bold text-warning">{{ master.redis_instance.used_memory_human }}</div>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted text-center">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if master.redis_instance %}
+                                <div class="text-center">
+                                    <div class="fw-bold text-primary">{{ master.redis_instance.total_keys|default:"0"|floatformat:0 }}</div>
+                                </div>
+                            {% else %}
+                                <span class="text-center text-muted">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if master.redis_instance %}
+                                <a href="{% url 'instance_detail' master.redis_instance.id %}" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-external-link-alt"></i> View
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Not analyzed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Expandable Details Row -->
+                    <tr class="master-details" id="details-{{ master.id }}" style="display: none;">
+                        <td></td>
+                        <td colspan="8">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body py-3">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted mb-2"><i class="fas fa-cogs"></i> Configuration Details</h6>
+                                            <table class="table table-sm table-borderless mb-0">
+                                                <tr>
+                                                    <td><strong>Down After (ms):</strong></td>
+                                                    <td>{{ master.down_after_milliseconds|default:"-" }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Failover Timeout:</strong></td>
+                                                    <td>{{ master.failover_timeout|default:"-" }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Parallel Syncs:</strong></td>
+                                                    <td>{{ master.parallel_syncs|default:"-" }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Other Sentinels:</strong></td>
+                                                    <td>{{ master.num_other_sentinels|default:"-" }}</td>
+                                                </tr>
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted mb-2"><i class="fas fa-heartbeat"></i> Health Monitoring</h6>
+                                            <table class="table table-sm table-borderless mb-0">
+                                                <tr>
+                                                    <td><strong>Last Ping Sent:</strong></td>
+                                                    <td>{{ master.last_ping_sent|default:"-" }}{% if master.last_ping_sent %} ms ago{% endif %}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Last OK Ping:</strong></td>
+                                                    <td>{{ master.last_ok_ping_reply|default:"-" }}{% if master.last_ok_ping_reply %} ms ago{% endif %}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Last Ping Reply:</strong></td>
+                                                    <td>{{ master.last_ping_reply|default:"-" }}{% if master.last_ping_reply %} ms ago{% endif %}</td>
+                                                </tr>
+                                                {% if master.redis_instance %}
+                                                <tr>
+                                                    <td><strong>Redis Version:</strong></td>
+                                                    <td>{{ master.redis_instance.version|default:"-" }}</td>
+                                                </tr>
+                                                {% endif %}
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Configuration Categories -->
+{% if configs_by_category %}
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-cogs"></i> Configuration Parameters
+        </h5>
+    </div>
+    <div class="card-body">
+        {% for category, configs in configs_by_category.items %}
+        <div class="mb-4">
+            <h6 class="text-primary border-bottom pb-2 mb-3">
+                <i class="fas fa-tag"></i> {{ category|title }} Configuration
+                <span class="badge bg-secondary ms-2">{{ configs|length }}</span>
+            </h6>
+            
+            <div class="table-responsive">
+                <table class="table table-sm table-striped">
+                    <thead>
+                        <tr>
+                            <th width="30%">Parameter</th>
+                            <th width="50%">Value</th>
+                            <th width="20%">Master Context</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for config in configs %}
+                        <tr>
+                            <td><code>{{ config.parameter_name }}</code></td>
+                            <td>
+                                <span class="text-break">{{ config.parameter_value|truncatechars:80 }}</span>
+                                {% if config.parameter_value|length > 80 %}
+                                    <button class="btn btn-sm btn-link p-0 ms-2" 
+                                            onclick="showFullValue('{{ config.id }}')" 
+                                            title="Show full value">
+                                        <i class="fas fa-expand-alt"></i>
+                                    </button>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if config.master_name %}
+                                    <span class="badge bg-warning text-dark">{{ config.master_name }}</span>
+                                {% else %}
+                                    <span class="text-muted">General</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- Configuration Summary -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-chart-bar"></i> Configuration Categories Summary
+                </h5>
+            </div>
+            <div class="card-body">
+                {% if configs_by_category %}
+                    <div class="row">
+                        {% for category, configs in configs_by_category.items %}
+                        <div class="col-md-6 mb-3">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <span class="text-capitalize">{{ category }}</span>
+                                <span class="badge bg-primary">{{ configs|length }}</span>
+                            </div>
+                            <div class="progress mt-1" style="height: 5px;">
+                                <div class="progress-bar" role="progressbar" 
+                                     style="width: {% widthratio configs|length configurations.count 100 %}%"></div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <p class="text-muted">No configuration data available.</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-lg-4">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-tools"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    <a href="{% url 'sentinel_configurations' %}?sentinel={{ sentinel.ip_address }}" 
+                       class="btn btn-outline-info">
+                        <i class="fas fa-cogs"></i> View All Configurations
+                    </a>
+                    <a href="{% url 'monitored_masters' %}?sentinel={{ sentinel.ip_address }}" 
+                       class="btn btn-outline-warning">
+                        <i class="fas fa-crown"></i> View All Masters
+                    </a>
+                    <a href="{% url 'sentinel_analyze' %}" 
+                       class="btn btn-outline-primary">
+                        <i class="fas fa-redo"></i> Re-analyze This Sentinel
+                    </a>
+                    <hr>
+                    <a href="{% url 'sentinel_sessions' %}" 
+                       class="btn btn-outline-secondary">
+                        <i class="fas fa-history"></i> View Analysis History
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Full Value Modal -->
+<div class="modal fade" id="fullValueModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Full Configuration Value</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <pre id="fullValueContent" class="bg-light p-3 rounded"></pre>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function showFullValue(configId) {
+    // This is a placeholder - in a real implementation, you'd fetch the full value
+    const modal = new bootstrap.Modal(document.getElementById('fullValueModal'));
+    document.getElementById('fullValueContent').textContent = 'Full configuration value for ID: ' + configId;
+    modal.show();
+}
+
+// Copy functionality for configuration values
+document.addEventListener('DOMContentLoaded', function() {
+    // Add copy buttons to code elements
+    document.querySelectorAll('code').forEach(function(codeElement) {
+        codeElement.style.cursor = 'pointer';
+        codeElement.title = 'Click to copy';
+        codeElement.addEventListener('click', function() {
+            navigator.clipboard.writeText(this.textContent).then(function() {
+                // Show a brief success indication
+                const original = codeElement.style.backgroundColor;
+                codeElement.style.backgroundColor = '#d4edda';
+                setTimeout(function() {
+                    codeElement.style.backgroundColor = original;
+                }, 500);
+            });
+        });
+    });
+    
+    // Handle expand/collapse for master details
+    document.querySelectorAll('.master-row').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            // Don't trigger on action button clicks
+            if (e.target.closest('a')) {
+                return;
+            }
+            
+            const masterId = this.dataset.masterId;
+            const detailsRow = document.getElementById('details-' + masterId);
+            const expandBtn = this.querySelector('.expand-btn i');
+            
+            if (detailsRow.style.display !== 'none') {
+                // Collapse
+                detailsRow.style.display = 'none';
+                expandBtn.className = 'fas fa-chevron-right';
+                this.classList.remove('table-active');
+            } else {
+                // Expand
+                detailsRow.style.display = '';
+                expandBtn.className = 'fas fa-chevron-down';
+                this.classList.add('table-active');
+            }
+        });
+    });
+    
+    // Handle expand button click specifically
+    document.querySelectorAll('.expand-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            this.closest('.master-row').click();
+        });
+    });
+    
+    // Handle chevron rotation for Sentinel Raw INFO collapse
+    $('#sentinelRawInfoCollapse').on('show.bs.collapse', function () {
+        $('[data-bs-target="#sentinelRawInfoCollapse"] .fa-chevron-down').removeClass('fa-chevron-down').addClass('fa-chevron-up');
+    });
+    
+    $('#sentinelRawInfoCollapse').on('hide.bs.collapse', function () {
+        $('[data-bs-target="#sentinelRawInfoCollapse"] .fa-chevron-up').removeClass('fa-chevron-up').addClass('fa-chevron-down');
+    });
+});
+</script>
+{% endblock %}

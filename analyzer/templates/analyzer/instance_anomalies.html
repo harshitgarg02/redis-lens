@@ -1,0 +1,191 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+
+{% block title %}Anomalies - {{ instance }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    .severity-critical { color: #dc3545; font-weight: bold; }
+    .severity-warning { color: #fd7e14; font-weight: bold; }
+    .severity-notice { color: #0dcaf0; font-weight: bold; }
+    .status-detected { color: #dc3545; }
+    .status-acknowledged { color: #fd7e14; }
+    .status-resolved { color: #198754; }
+    .status-false_positive { color: #6c757d; }
+    .anomaly-card {
+        transition: transform 0.2s;
+        border-left: 4px solid #e9ecef;
+    }
+    .anomaly-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .anomaly-card.critical {
+        border-left-color: #dc3545;
+    }
+    .anomaly-card.warning {
+        border-left-color: #fd7e14;
+    }
+    .anomaly-card.notice {
+        border-left-color: #0dcaf0;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-md-8">
+            <nav aria-label="breadcrumb">
+                <ol class="breadcrumb">
+                    <li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+                    <li class="breadcrumb-item"><a href="{% url 'instance_detail' instance.id %}">{{ instance }}</a></li>
+                    <li class="breadcrumb-item active">Anomalies</li>
+                </ol>
+            </nav>
+            <h1 class="h3 mb-0">
+                <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                Anomalies for {{ instance }}
+            </h1>
+            <div class="mt-2">
+                <span class="badge bg-info">{{ instance.get_role_display }}</span>
+                <span class="badge bg-{{ instance.status|yesno:'success,danger' }} ms-1">
+                    {{ instance.get_status_display }}
+                </span>
+                {% if instance.version %}
+                    <small class="text-muted ms-2">Redis {{ instance.version }}</small>
+                {% endif %}
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <form method="post" class="d-inline">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="detect">
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-search me-1"></i>Run Detection
+                </button>
+            </form>
+            <a href="{% url 'instance_detail' instance.id %}" class="btn btn-outline-secondary ms-2">
+                <i class="fas fa-arrow-left me-1"></i>Back to Instance
+            </a>
+        </div>
+    </div>
+
+    <!-- Statistics -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Total Anomalies</h5>
+                    <h2 class="display-4 text-primary">{{ anomalies.count }}</h2>
+                </div>
+            </div>
+        </div>
+                        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Critical</h5>
+                    <h2 class="display-4 text-danger">{{ critical_anomalies }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Warning</h5>
+                    <h2 class="display-4 text-warning">{{ warning_anomalies }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-center">
+                <div class="card-body">
+                    <h5 class="card-title text-muted">Unresolved</h5>
+                    <h2 class="display-4 text-info">{{ unresolved_anomalies }}</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Anomalies List -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="mb-0">Detected Anomalies</h5>
+                </div>
+                <div class="card-body">
+                    {% if anomalies %}
+                        <div class="row">
+                            {% for anomaly in anomalies %}
+                                <div class="col-md-6 mb-3">
+                                    <div class="card anomaly-card {{ anomaly.rule.severity }}">
+                                        <div class="card-body">
+                                            <div class="d-flex justify-content-between align-items-start mb-2">
+                                                <span class="badge bg-secondary">{{ anomaly.rule.rule_id }}</span>
+                                                <span class="severity-{{ anomaly.rule.severity }}">
+                                                    {{ anomaly.rule.get_severity_display }}
+                                                </span>
+                                            </div>
+                                            <h6 class="card-title">
+                                                <a href="{% url 'anomaly_detail' anomaly.id %}" class="text-decoration-none">
+                                                    {{ anomaly.rule.anomaly_description|truncatechars:80 }}
+                                                </a>
+                                            </h6>
+                                            <p class="card-text">
+                                                <small class="text-muted">
+                                                    <strong>Category:</strong> {{ anomaly.rule.get_category_display }}
+                                                </small>
+                                            </p>
+                                            {% if anomaly.affected_configs %}
+                                                <p class="card-text">
+                                                    <small class="text-muted">
+                                                        <strong>Affected configs:</strong>
+                                                        {% for config_name in anomaly.affected_configs.keys|slice:":3" %}
+                                                            <span class="badge bg-light text-dark">{{ config_name }}</span>
+                                                        {% endfor %}
+                                                        {% if anomaly.affected_configs.keys|length > 3 %}
+                                                            <span class="text-muted">+{{ anomaly.affected_configs.keys|length|add:"-3" }} more</span>
+                                                        {% endif %}
+                                                    </small>
+                                                </p>
+                                            {% endif %}
+                                            <div class="d-flex justify-content-between align-items-center">
+                                                <small class="text-muted">
+                                                    <i class="fas fa-clock me-1"></i>
+                                                    {{ anomaly.detected_at|to_ist|date:"M d, Y H:i" }}
+                                                </small>
+                                                <span class="badge status-{{ anomaly.status }}">
+                                                    {{ anomaly.get_status_display }}
+                                                </span>
+                                            </div>
+                                            <div class="mt-2">
+                                                <small class="text-muted">
+                                                    {{ anomaly.rule.recommended_state|truncatechars:100 }}
+                                                </small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="text-center py-5">
+                            <i class="fas fa-check-circle fa-3x text-success mb-3"></i>
+                            <h4 class="text-muted">No anomalies detected</h4>
+                            <p class="text-muted">
+                                This Redis instance appears to be configured correctly according to our detection rules.
+                                <br>
+                                <button type="button" class="btn btn-primary mt-3" onclick="document.querySelector('form[method=post]').submit();">
+                                    <i class="fas fa-search me-1"></i>Run Detection Again
+                                </button>
+                            </p>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,104 @@
+{% extends 'analyzer/base.html' %}
+
+{% block title %}Analysis Selection - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <div>
+        <h1 class="h2"><i class="fas fa-search text-primary"></i> Choose Analysis Type</h1>
+        <p class="text-muted mb-0">Select the type of Redis analysis you want to perform</p>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Redis Analysis Card -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body text-center p-5">
+                <div class="mb-4">
+                    <i class="fas fa-database text-primary" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="card-title text-primary mb-3">Redis Analysis</h3>
+                <p class="card-text text-muted mb-4">
+                    Analyze standalone Redis instances and master-slave setups. Monitor configuration, 
+                    performance metrics, and identify potential issues.
+                </p>
+                <ul class="list-unstyled text-start mb-4">
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Configuration analysis</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Performance monitoring</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Master-slave replication</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Memory usage insights</li>
+                </ul>
+                <a href="{% url 'analyze_redis' %}" class="btn btn-primary btn-lg w-100">
+                    <i class="fas fa-play me-2"></i>Start Redis Analysis
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sentinel Analysis Card -->
+    <div class="col-lg-6 mb-4">
+        <div class="card h-100 shadow-sm border-0">
+            <div class="card-body text-center p-5">
+                <div class="mb-4">
+                    <i class="fas fa-shield-alt text-warning" style="font-size: 4rem;"></i>
+                </div>
+                <h3 class="card-title text-warning mb-3">Sentinel Analysis</h3>
+                <p class="card-text text-muted mb-4">
+                    Monitor Redis Sentinel high-availability setups. Analyze failover mechanisms, 
+                    master discovery, and sentinel configuration.
+                </p>
+                <ul class="list-unstyled text-start mb-4">
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> High availability monitoring</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Failover analysis</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Master discovery</li>
+                    <li class="mb-2"><i class="fas fa-check text-success me-2"></i> Sentinel configuration</li>
+                </ul>
+                <a href="{% url 'sentinel_analyze' %}" class="btn btn-warning btn-lg w-100">
+                    <i class="fas fa-shield-alt me-2"></i>Start Sentinel Analysis
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Information Section -->
+<div class="row mt-5">
+    <div class="col-12">
+        <div class="card bg-light border-0">
+            <div class="card-body">
+                <div class="row align-items-center">
+                    <div class="col-md-8">
+                        <h5 class="mb-2"><i class="fas fa-info-circle text-info me-2"></i>Not sure which to choose?</h5>
+                        <p class="text-muted mb-0">
+                            Use <strong>Redis Analysis</strong> for standalone instances and basic master-slave setups. 
+                            Use <strong>Sentinel Analysis</strong> for high-availability configurations with automatic failover.
+                        </p>
+                    </div>
+                    <div class="col-md-4 text-md-end">
+                        <a href="{% url 'redis_concepts' %}" class="btn btn-outline-info">
+                            <i class="fas fa-book me-2"></i>Learn More
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+.btn-lg {
+    padding: 12px 24px;
+    font-weight: 600;
+}
+</style>
+{% endblock %}

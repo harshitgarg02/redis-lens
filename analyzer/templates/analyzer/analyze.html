@@ -1,0 +1,207 @@
+{% extends 'analyzer/base.html' %}
+
+{% block title %}Start Analysis - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-play"></i> Start Redis Analysis</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+            <i class="fas fa-arrow-left"></i> Back to Dashboard
+        </a>
+    </div>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-cogs"></i> Configure Redis Analysis
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="analysisForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label for="master_ip" class="form-label">
+                            <strong>Master IP Address <span class="text-danger">*</span></strong>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="master_ip" 
+                               name="master_ip" 
+                               placeholder="e.g., 192.168.1.100" 
+                               required>
+                        <div class="form-text">
+                            Enter the IP address of the Redis master instance. The analyzer will 
+                            automatically discover and analyze all connected slaves.
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="master_port" class="form-label">
+                            <strong>Master Port</strong>
+                        </label>
+                        <input type="number" 
+                               class="form-control" 
+                               id="master_port" 
+                               name="master_port" 
+                               value="6379" 
+                               min="1" 
+                               max="65535">
+                        <div class="form-text">
+                            Redis port number (default: 6379).
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="password" class="form-label">
+                            <strong>Password (Optional)</strong>
+                        </label>
+                        <input type="password" 
+                               class="form-control" 
+                               id="password" 
+                               name="password" 
+                               placeholder="Enter Redis password if required">
+                        <div class="form-text">
+                            Leave blank if no authentication is required.
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="session_name" class="form-label">
+                            <strong>Session Name (Optional)</strong>
+                        </label>
+                        <input type="text" 
+                               class="form-control" 
+                               id="session_name" 
+                               name="session_name" 
+                               placeholder="e.g., Production Cluster Analysis">
+                        <div class="form-text">
+                            Provide a descriptive name for this analysis session.
+                        </div>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>What happens during analysis?</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>Connect to the specified Redis master instance</li>
+                            <li>Discover all connected slave/replica instances</li>
+                            <li>Fetch configuration parameters from all instances</li>
+                            <li>Collect performance metrics and replication information</li>
+                            <li>Store data for filtering, comparison, and export</li>
+                        </ul>
+                    </div>
+
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                        <button type="button" class="btn btn-secondary me-md-2" onclick="resetForm()">
+                            <i class="fas fa-undo"></i> Reset
+                        </button>
+                        <button type="submit" class="btn btn-primary" id="submitBtn">
+                            <i class="fas fa-play"></i> Start Analysis
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Analysis Progress Section (initially hidden) -->
+        <div class="card shadow mt-4 d-none" id="progressCard">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-spinner fa-spin"></i> Analysis in Progress
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="progress mb-3">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                         role="progressbar" 
+                         style="width: 0%" 
+                         id="progressBar">
+                    </div>
+                </div>
+                <div id="progressText">Initializing analysis...</div>
+            </div>
+        </div>
+
+        <!-- Previous Analysis Results -->
+        <div class="card shadow mt-4">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-clock"></i> Recent Analyses
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    View your recent analysis sessions on the 
+                    <a href="{% url 'dashboard' %}">dashboard</a> or browse 
+                    <a href="{% url 'instance_configurations' %}">configurations</a> 
+                    from previous analyses.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function resetForm() {
+    document.getElementById('analysisForm').reset();
+    document.getElementById('master_port').value = '6379';
+}
+
+document.getElementById('analysisForm').addEventListener('submit', function(e) {
+    const submitBtn = document.getElementById('submitBtn');
+    const progressCard = document.getElementById('progressCard');
+    
+    // Show progress and disable form
+    submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Analyzing...';
+    submitBtn.disabled = true;
+    progressCard.classList.remove('d-none');
+    
+    // Simulate progress (you can replace this with actual progress tracking)
+    let progress = 0;
+    const progressBar = document.getElementById('progressBar');
+    const progressText = document.getElementById('progressText');
+    
+    const progressMessages = [
+        'Connecting to Redis master...',
+        'Discovering slave instances...',
+        'Fetching configuration parameters...',
+        'Collecting performance metrics...',
+        'Saving analysis results...'
+    ];
+    
+    const interval = setInterval(() => {
+        progress += 20;
+        progressBar.style.width = progress + '%';
+        
+        const messageIndex = Math.floor(progress / 20) - 1;
+        if (messageIndex >= 0 && messageIndex < progressMessages.length) {
+            progressText.textContent = progressMessages[messageIndex];
+        }
+        
+        if (progress >= 100) {
+            clearInterval(interval);
+            progressText.textContent = 'Analysis complete! Redirecting...';
+        }
+    }, 1000);
+});
+
+// IP address validation
+document.getElementById('master_ip').addEventListener('input', function(e) {
+    const ip = e.target.value;
+    const ipPattern = /^(\d{1,3}\.){3}\d{1,3}$/;
+    
+    if (ip && !ipPattern.test(ip)) {
+        e.target.setCustomValidity('Please enter a valid IP address');
+    } else {
+        e.target.setCustomValidity('');
+    }
+});
+</script>
+{% endblock %}

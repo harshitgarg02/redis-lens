@@ -1,0 +1,296 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+
+{% block title %}Master Analysis Sessions - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-history"></i> Master Analysis Sessions</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'analyze_redis' %}" class="btn btn-primary">
+            <i class="fas fa-play"></i> New Redis Analysis
+        </a>
+    </div>
+</div>
+
+<!-- Sessions -->
+<div class="card shadow">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-history"></i> Analysis Sessions History
+        </h6>
+        <div class="text-muted">
+            <small>Total: {{ page_obj.paginator.count }} sessions</small>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th><i class="fas fa-calendar"></i> Date</th>
+                            <th><i class="fas fa-database"></i> Master</th>
+                            <th><i class="fas fa-check-circle"></i> Status</th>
+                            <th><i class="fas fa-chart-bar"></i> Results</th>
+                            <th><i class="fas fa-clock"></i> Duration</th>
+                            <th><i class="fas fa-eye"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in page_obj %}
+                        <tr>
+                            <td>
+                                <strong>{{ session.created_at|ist_date }}</strong><br>
+                                <small class="text-muted">{{ session.created_at|ist_time }}</small>
+                            </td>
+                            <td>
+                                <code>{{ session.master_ip }}:{{ session.master_port }}</code>
+                                {% if session.session_name %}
+                                    <div class="small text-primary">{{ session.session_name }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if session.status == 'completed' %}
+                                    <span class="badge bg-success">
+                                        <i class="fas fa-check"></i> Completed
+                                    </span>
+                                {% elif session.status == 'running' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-spinner fa-spin"></i> Running
+                                    </span>
+                                {% elif session.status == 'failed' %}
+                                    <span class="badge bg-danger">
+                                        <i class="fas fa-times"></i> Failed
+                                    </span>
+                                {% elif session.status == 'partial' %}
+                                    <span class="badge bg-warning">
+                                        <i class="fas fa-exclamation-triangle"></i> Partial
+                                    </span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ session.status|title }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="row text-center">
+                                    <div class="col-4">
+                                        <div class="small text-muted">Total</div>
+                                        <div class="fw-bold text-primary">{{ session.total_instances_found|default:"0" }}</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="small text-muted">Connected</div>
+                                        <div class="fw-bold text-success">{{ session.successful_connections|default:"0" }}</div>
+                                    </div>
+                                    <div class="col-4">
+                                        <div class="small text-muted">Failed</div>
+                                        <div class="fw-bold text-danger">{{ session.failed_connections|default:"0" }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td>
+                                {% load duration_filters %}
+                                <span class="text-muted">{{ session.duration|format_duration }}</span>
+                            </td>
+                            <td>
+                                <a href="{% url 'analysis_detail' session.id %}" class="btn btn-sm btn-outline-primary">
+                                    <i class="fas fa-eye"></i> View Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center text-muted py-4">
+                                <i class="fas fa-inbox fa-2x mb-2"></i>
+                                <p>No analysis sessions found</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Pagination -->
+            {% if page_obj.paginator.num_pages > 1 %}
+            <nav aria-label="Sessions pagination" class="mt-4">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1" aria-label="First">
+                                <i class="fas fa-angle-double-left"></i> First
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Previous">
+                                <i class="fas fa-angle-left"></i> Previous
+                            </a>
+                        </li>
+                    {% endif %}
+                    
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Next">
+                                Next <i class="fas fa-angle-right"></i>
+                            </a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Last">
+                                Last <i class="fas fa-angle-double-right"></i>
+                            </a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-inbox fa-4x text-muted mb-3"></i>
+                <h5 class="text-muted">No Master Analysis Sessions Found</h5>
+                <p class="text-muted">
+                    You haven't performed any Redis master analysis sessions yet.<br>
+                    Start your first analysis to see sessions appear here.
+                </p>
+                <a href="{% url 'analyze_redis' %}" class="btn btn-primary mt-3">
+                    <i class="fas fa-play"></i> Start First Analysis
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Session Statistics (if we have sessions) -->
+{% if page_obj %}
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Total Analysis
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ page_obj.paginator.count }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-history fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Completed
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% with completed_count=0 %}
+                                {% for session in page_obj.paginator.object_list %}
+                                    {% if session.status == 'completed' %}
+                                        {% with completed_count=completed_count|add:1 %}{% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                                {{ completed_count }}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Running/Partial
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% with running_count=0 %}
+                                {% for session in page_obj.paginator.object_list %}
+                                    {% if session.status == 'running' or session.status == 'partial' %}
+                                        {% with running_count=running_count|add:1 %}{% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                                {{ running_count }}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-exclamation-triangle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-danger shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-danger text-uppercase mb-1">
+                            Failed
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% with failed_count=0 %}
+                                {% for session in page_obj.paginator.object_list %}
+                                    {% if session.status == 'failed' %}
+                                        {% with failed_count=failed_count|add:1 %}{% endwith %}
+                                    {% endif %}
+                                {% endfor %}
+                                {{ failed_count }}
+                            {% endwith %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-times-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Additional Info -->
+<div class="card shadow mt-4">
+    <div class="card-header py-3">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-info-circle"></i> About Master Analysis Sessions
+        </h6>
+    </div>
+    <div class="card-body">
+        <p class="mb-2">Master Analysis Sessions provide:</p>
+        <ul class="mb-0">
+            <li>Complete Redis master and slave cluster analysis</li>
+            <li>Redis instance configurations and performance metrics</li>
+            <li>Replication topology discovery</li>
+            <li>Memory usage, keyspace information, and connection details</li>
+            <li>Historical tracking of Redis cluster changes over time</li>
+        </ul>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}

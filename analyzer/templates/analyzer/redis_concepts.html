@@ -1,0 +1,290 @@
+{% extends 'analyzer/base.html' %}
+
+{% block title %}Redis Concepts - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-book-open text-primary"></i> Understanding Redis</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'guided_setup' %}" class="btn btn-sm btn-primary">
+                <i class="fas fa-rocket"></i> Start Guided Setup
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Redis Overview Card -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-primary text-white">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-database"></i> What is Redis?
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p class="lead">Redis (Remote Dictionary Server) is an open-source, in-memory data structure store used as a database, cache, and message broker.</p>
+                        <h6><i class="fas fa-check-circle text-success"></i> Key Features:</h6>
+                        <ul class="list-unstyled">
+                            <li><i class="fas fa-bolt text-warning"></i> <strong>High Performance:</strong> In-memory storage for sub-millisecond response times</li>
+                            <li><i class="fas fa-layer-group text-info"></i> <strong>Data Structures:</strong> Strings, Lists, Sets, Hashes, Sorted Sets, and more</li>
+                            <li><i class="fas fa-sync text-primary"></i> <strong>Persistence:</strong> Optional disk persistence with RDB and AOF</li>
+                            <li><i class="fas fa-expand-arrows-alt text-success"></i> <strong>Scalability:</strong> Built-in replication and clustering</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4 text-center">
+                        <div class="bg-light rounded p-3">
+                            <i class="fas fa-database fa-5x text-primary mb-3"></i>
+                            <h6 class="text-muted">In-Memory Database</h6>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Master-Slave Architecture -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-success text-white">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-sitemap"></i> Master-Slave Replication
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6><i class="fas fa-crown text-warning"></i> Master Node</h6>
+                        <p>The master node is the primary Redis instance that:</p>
+                        <ul>
+                            <li>Handles all write operations</li>
+                            <li>Serves read operations (configurable)</li>
+                            <li>Replicates data to slave nodes</li>
+                            <li>Maintains the authoritative data set</li>
+                        </ul>
+                        
+                        <h6><i class="fas fa-server text-info"></i> Slave Nodes (Replicas)</h6>
+                        <p>Slave nodes are read-only copies that:</p>
+                        <ul>
+                            <li>Receive data from the master</li>
+                            <li>Handle read operations to scale performance</li>
+                            <li>Provide data redundancy and backup</li>
+                            <li>Can be promoted to master if needed</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="text-center">
+                            <div class="replication-diagram">
+                                <div class="master-node bg-warning text-dark p-3 rounded mb-3">
+                                    <i class="fas fa-crown fa-2x"></i>
+                                    <h6 class="mt-2 mb-0">Master</h6>
+                                    <small>Read + Write</small>
+                                </div>
+                                <div class="d-flex justify-content-center mb-2">
+                                    <i class="fas fa-arrow-down fa-2x text-muted"></i>
+                                </div>
+                                <div class="row">
+                                    <div class="col-6">
+                                        <div class="slave-node bg-info text-white p-2 rounded">
+                                            <i class="fas fa-server"></i>
+                                            <h6 class="mt-1 mb-0">Slave 1</h6>
+                                            <small>Read Only</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-6">
+                                        <div class="slave-node bg-info text-white p-2 rounded">
+                                            <i class="fas fa-server"></i>
+                                            <h6 class="mt-1 mb-0">Slave 2</h6>
+                                            <small>Read Only</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="alert alert-info mt-3">
+                            <i class="fas fa-lightbulb"></i>
+                            <strong>Benefits:</strong> Improves read performance, provides data redundancy, and enables horizontal scaling.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Redis Sentinel -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-warning text-dark">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-shield-alt"></i> Redis Sentinel
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <p class="lead">Redis Sentinel provides high availability for Redis through automatic failover and monitoring.</p>
+                        
+                        <h6><i class="fas fa-eye text-primary"></i> Monitoring & Detection</h6>
+                        <ul>
+                            <li>Continuously monitors master and slave instances</li>
+                            <li>Detects when masters are not working properly</li>
+                            <li>Sends notifications about Redis instances status</li>
+                        </ul>
+                        
+                        <h6><i class="fas fa-exchange-alt text-success"></i> Automatic Failover</h6>
+                        <ul>
+                            <li>Promotes a slave to master when master fails</li>
+                            <li>Reconfigures other slaves to use the new master</li>
+                            <li>Notifies applications about configuration changes</li>
+                        </ul>
+                        
+                        <h6><i class="fas fa-cogs text-info"></i> Configuration Provider</h6>
+                        <ul>
+                            <li>Acts as authority for service discovery</li>
+                            <li>Clients connect to Sentinels to get current master address</li>
+                            <li>Provides configuration updates during failovers</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="sentinel-diagram text-center">
+                            <div class="bg-warning text-dark p-3 rounded mb-3">
+                                <i class="fas fa-shield-alt fa-3x"></i>
+                                <h6 class="mt-2 mb-0">Sentinel Cluster</h6>
+                                <small>Monitoring & Failover</small>
+                            </div>
+                            <div class="alert alert-warning">
+                                <i class="fas fa-exclamation-triangle"></i>
+                                <strong>Quorum:</strong> Multiple sentinels work together to make decisions and avoid false positives.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Common Use Cases -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-info text-white">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-lightbulb"></i> Common Redis Use Cases
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 mb-3">
+                        <div class="use-case-card h-100 p-3 border rounded">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-tachometer-alt fa-3x text-primary"></i>
+                            </div>
+                            <h6 class="text-center">Caching</h6>
+                            <ul class="small">
+                                <li>Database query results</li>
+                                <li>Session storage</li>
+                                <li>API response caching</li>
+                                <li>Page caching</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="use-case-card h-100 p-3 border rounded">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-comments fa-3x text-success"></i>
+                            </div>
+                            <h6 class="text-center">Real-time Applications</h6>
+                            <ul class="small">
+                                <li>Chat applications</li>
+                                <li>Live notifications</li>
+                                <li>Real-time analytics</li>
+                                <li>Gaming leaderboards</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="use-case-card h-100 p-3 border rounded">
+                            <div class="text-center mb-3">
+                                <i class="fas fa-tasks fa-3x text-warning"></i>
+                            </div>
+                            <h6 class="text-center">Queue & Job Processing</h6>
+                            <ul class="small">
+                                <li>Task queues</li>
+                                <li>Background jobs</li>
+                                <li>Message brokering</li>
+                                <li>Pub/Sub messaging</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Next Steps -->
+<div class="row">
+    <div class="col-12">
+        <div class="card border-0 shadow-sm">
+            <div class="card-header bg-dark text-white">
+                <h4 class="card-title mb-0">
+                    <i class="fas fa-rocket"></i> Ready to Get Started?
+                </h4>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4 text-center mb-3">
+                        <a href="{% url 'guided_setup' %}" class="btn btn-primary btn-lg mb-2">
+                            <i class="fas fa-magic"></i> Guided Setup
+                        </a>
+                        <p class="small text-muted">Follow step-by-step instructions</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <a href="{% url 'analyze_redis' %}" class="btn btn-success btn-lg mb-2">
+                            <i class="fas fa-play"></i> Start Analysis
+                        </a>
+                        <p class="small text-muted">Analyze your Redis instances</p>
+                    </div>
+                    <div class="col-md-4 text-center mb-3">
+                        <a href="{% url 'sentinel_analyze' %}" class="btn btn-warning btn-lg mb-2">
+                            <i class="fas fa-shield-alt"></i> Analyze Sentinel
+                        </a>
+                        <p class="small text-muted">Monitor your Sentinel setup</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.replication-diagram, .sentinel-diagram {
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 10px;
+}
+
+.use-case-card {
+    transition: transform 0.2s ease-in-out;
+    background: #f8f9fa;
+}
+
+.use-case-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}
+
+.master-node, .slave-node {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+}
+</style>
+{% endblock %}

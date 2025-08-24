@@ -1,0 +1,526 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+
+{% block title %}Sentinel Analysis Details - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2">
+        <i class="fas fa-shield-alt"></i> Sentinel Analysis Details
+        <small class="text-muted">#{{ session.id }}</small>
+    </h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <div class="btn-group me-2">
+            <a href="{% url 'sentinel_sessions' %}" class="btn btn-outline-secondary">
+                <i class="fas fa-arrow-left"></i> Back to Analysis
+            </a>
+            <a href="{% url 'sentinel_analyze' %}" class="btn btn-primary">
+                <i class="fas fa-shield-alt"></i> New Analysis
+            </a>
+        </div>
+    </div>
+</div>
+
+<!-- Session Info -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card shadow">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="fas fa-info-circle"></i> Session Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Session Name:</strong></td>
+                                <td>{{ session.session_name|default:"N/A" }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Sentinel:</strong></td>
+                                <td><code>{{ session.sentinel_ip }}:{{ session.sentinel_port }}</code></td>
+                            </tr>
+                            <tr>
+                                <td><strong>Analysis Type:</strong></td>
+                                <td>
+                                    {% if session.analysis_type == 'config' %}
+                                        <span class="badge bg-primary">{{ session.get_analysis_type_display }}</span>
+                                    {% elif session.analysis_type == 'discovery' %}
+                                        <span class="badge bg-warning text-dark">{{ session.get_analysis_type_display }}</span>
+                                    {% elif session.analysis_type == 'full' %}
+                                        <span class="badge bg-success">{{ session.get_analysis_type_display }}</span>
+                                    {% elif session.analysis_type == 'topology' %}
+                                        <span class="badge bg-info text-dark">{{ session.get_analysis_type_display }}</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">{{ session.get_analysis_type_display }}</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Status:</strong></td>
+                                <td>
+                                    <span class="badge {% if session.status == 'completed' %}bg-success{% elif session.status == 'failed' %}bg-danger{% elif session.status == 'partial' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                        {{ session.status|title }}
+                                    </span>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <table class="table table-borderless">
+                            <tr>
+                                <td><strong>Started:</strong></td>
+                                <td>{{ session.analysis_start_time|ist_datetime }}</td>
+                            </tr>
+                            <tr>
+                                <td><strong>Completed:</strong></td>
+                                <td>
+                                    {% if session.analysis_end_time %}
+                                        {{ session.analysis_end_time|ist_datetime }}
+                                    {% else %}
+                                        <i class="fas fa-spinner fa-spin"></i> Running...
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Duration:</strong></td>
+                                <td>
+                                    {% if session.analysis_end_time %}
+                                        {{ session.duration }}
+                                    {% else %}
+                                        {{ session.analysis_start_time|timesince }} (ongoing)
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td><strong>Created:</strong></td>
+                                <td>{{ session.created_at|ist_datetime }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                {% if session.error_message %}
+                <div class="alert alert-danger mt-3">
+                    <h6><i class="fas fa-exclamation-triangle"></i> Error Message</h6>
+                    <p class="mb-0">{{ session.error_message }}</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Sentinels Found
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_sentinels }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-shield-alt fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Monitored Masters
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_masters }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-crown fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Redis Instances
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">{{ total_redis_instances }}</div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-database fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Success Rate
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {% if session.successful_connections and session.failed_connections >= 0 %}
+                                {% widthratio session.successful_connections session.successful_connections|add:session.failed_connections 100 %}%
+                            {% else %}
+                                100%
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Sentinel Instances -->
+{% if sentinels %}
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-shield-alt"></i> Sentinel Instances
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Address</th>
+                        <th>Status</th>
+                        <th>Version</th>
+                        <th>Uptime</th>
+                        <th>Masters Monitored</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for sentinel in sentinels %}
+                    <tr>
+                        <td><code>{{ sentinel.ip_address }}:{{ sentinel.port }}</code></td>
+                        <td>
+                            <span class="badge {% if sentinel.status == 'online' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ sentinel.status|title }}
+                            </span>
+                        </td>
+                        <td>{{ sentinel.version|default:"-" }}</td>
+                        <td>
+                            {% if sentinel.uptime_seconds %}
+                                {{ sentinel.uptime_seconds }} seconds
+                            {% else %}
+                                -
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-primary">{{ sentinel.masters_count|default:"0" }}</span>
+                        </td>
+                        <td>
+                            <a href="{% url 'sentinel_detail' sentinel.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Monitored Masters -->
+{% if monitored_masters %}
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-crown"></i> Monitored Masters
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th width="5%"></th>
+                        <th>Master Name</th>
+                        <th>Address</th>
+                        <th>Status</th>
+                        <th>Quorum</th>
+                        <th>Slaves</th>
+                        <th>Memory Usage</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for master in monitored_masters %}
+                    <!-- Compact Row -->
+                    <tr class="master-row" data-master-id="{{ master.id }}" style="cursor: pointer;">
+                        <td>
+                            <button class="btn btn-sm btn-link text-muted expand-btn" type="button">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </td>
+                        <td><strong class="text-primary">{{ master.master_name }}</strong></td>
+                        <td><code>{{ master.master_ip }}:{{ master.master_port }}</code></td>
+                        <td>
+                            <span class="badge {% if master.status == 'master' %}bg-success{% elif master.status == 'down' %}bg-danger{% else %}bg-warning{% endif %}">
+                                {{ master.status|title }}
+                            </span>
+                        </td>
+                        <td><span class="badge bg-info">{{ master.quorum|default:"-" }}</span></td>
+                        <td><span class="badge {% if master.num_slaves|default:0 < 3 %}bg-danger{% else %}bg-secondary{% endif %}">{{ master.num_slaves|default:"0" }}</span></td>
+                        <td>
+                            {% if master.redis_instance %}
+                                <div class="text-center">
+                                    {% if master.redis_instance.used_memory_human and master.redis_instance.maxmemory_human %}
+                                        <div class="fw-bold">
+                                            <span class="text-warning">{{ master.redis_instance.used_memory_human }}</span>
+                                            <span class="text-muted">/</span>
+                                            <span class="text-info">{{ master.redis_instance.maxmemory_human }}</span>
+                                        </div>
+                                    {% elif master.redis_instance.used_memory_human %}
+                                        <div class="fw-bold text-warning">{{ master.redis_instance.used_memory_human }}</div>
+                                    {% else %}
+                                        <span class="text-muted">-</span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <span class="text-muted text-center">-</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if master.redis_instance %}
+                                <a href="{% url 'instance_detail' master.redis_instance.id %}" class="btn btn-sm btn-outline-success">
+                                    <i class="fas fa-external-link-alt"></i> View
+                                </a>
+                            {% else %}
+                                <span class="text-muted">Not analyzed</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    
+                    <!-- Expandable Details Row -->
+                    <tr class="master-details" id="details-{{ master.id }}" style="display: none;">
+                        <td></td>
+                        <td colspan="7">
+                            <div class="card border-0 bg-light">
+                                <div class="card-body py-3">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted mb-2"><i class="fas fa-cogs"></i> Configuration Details</h6>
+                                            <table class="table table-sm table-borderless mb-0">
+                                                <tr>
+                                                    <td><strong>Down After (ms):</strong></td>
+                                                    <td>{{ master.down_after_milliseconds|default:"-" }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Failover Timeout:</strong></td>
+                                                    <td>{{ master.failover_timeout|default:"-" }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Parallel Syncs:</strong></td>
+                                                    <td>{{ master.parallel_syncs|default:"-" }}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Other Sentinels:</strong></td>
+                                                    <td>{{ master.num_other_sentinels|default:"-" }}</td>
+                                                </tr>
+                                                {% if master.redis_instance %}
+                                                <tr>
+                                                    <td><strong>Total Keys:</strong></td>
+                                                    <td class="fw-bold text-primary">{{ master.redis_instance.total_keys|default:"0"|floatformat:0 }}</td>
+                                                </tr>
+                                                {% endif %}
+                                            </table>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6 class="text-muted mb-2"><i class="fas fa-heartbeat"></i> Health Monitoring</h6>
+                                            <table class="table table-sm table-borderless mb-0">
+                                                <tr>
+                                                    <td><strong>Last Ping Sent:</strong></td>
+                                                    <td>{{ master.last_ping_sent|default:"-" }}{% if master.last_ping_sent %} ms ago{% endif %}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Last OK Ping:</strong></td>
+                                                    <td>{{ master.last_ok_ping_reply|default:"-" }}{% if master.last_ok_ping_reply %} ms ago{% endif %}</td>
+                                                </tr>
+                                                <tr>
+                                                    <td><strong>Last Ping Reply:</strong></td>
+                                                    <td>{{ master.last_ping_reply|default:"-" }}{% if master.last_ping_reply %} ms ago{% endif %}</td>
+                                                </tr>
+                                                {% if master.redis_instance %}
+                                                <tr>
+                                                    <td><strong>Redis Version:</strong></td>
+                                                    <td>{{ master.redis_instance.version|default:"-" }}</td>
+                                                </tr>
+                                                {% endif %}
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Redis Instances (if discovery was performed) -->
+{% if redis_instances %}
+<div class="card shadow mb-4">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-database"></i> Redis Instances Discovered
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-striped">
+                <thead>
+                    <tr>
+                        <th>Address</th>
+                        <th>Role</th>
+                        <th>Status</th>
+                        <th>Version</th>
+                        <th>Memory</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for instance in redis_instances %}
+                    <tr>
+                        <td><code>{{ instance.ip_address }}:{{ instance.port }}</code></td>
+                        <td>
+                            <span class="badge badge-role-{{ instance.role }}">
+                                {{ instance.role|title }}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge {% if instance.status == 'online' %}bg-success{% else %}bg-danger{% endif %}">
+                                {{ instance.status|title }}
+                            </span>
+                        </td>
+                        <td>{{ instance.version|default:"-" }}</td>
+                        <td>{{ instance.used_memory_human|default:"-" }}</td>
+                        <td>
+                            <a href="{% url 'instance_detail' instance.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="fas fa-eye"></i> View Details
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Quick Actions -->
+<div class="card shadow">
+    <div class="card-header">
+        <h5 class="card-title mb-0">
+            <i class="fas fa-tools"></i> Quick Actions
+        </h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-4">
+                <div class="d-grid">
+                    <a href="{% url 'sentinel_configurations' %}" class="btn btn-outline-info">
+                        <i class="fas fa-cogs"></i> View Sentinel Configurations
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-grid">
+                    <a href="{% url 'monitored_masters' %}" class="btn btn-outline-warning">
+                        <i class="fas fa-crown"></i> View All Monitored Masters
+                    </a>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="d-grid">
+                    <a href="{% url 'instance_configurations' %}" class="btn btn-outline-primary">
+                        <i class="fas fa-database"></i> View Redis Configurations
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Auto-refresh for running sessions
+document.addEventListener('DOMContentLoaded', function() {
+    const status = '{{ session.status }}';
+    if (status === 'running') {
+        // Refresh page every 5 seconds for running sessions
+        setTimeout(function() {
+            window.location.reload();
+        }, 5000);
+    }
+    
+    // Handle expand/collapse for master details
+    document.querySelectorAll('.master-row').forEach(function(row) {
+        row.addEventListener('click', function(e) {
+            // Don't trigger on action button clicks
+            if (e.target.closest('a')) {
+                return;
+            }
+            
+            const masterId = this.dataset.masterId;
+            const detailsRow = document.getElementById('details-' + masterId);
+            const expandBtn = this.querySelector('.expand-btn i');
+            
+            if (detailsRow.style.display !== 'none') {
+                // Collapse
+                detailsRow.style.display = 'none';
+                expandBtn.className = 'fas fa-chevron-right';
+                this.classList.remove('table-active');
+            } else {
+                // Expand
+                detailsRow.style.display = '';
+                expandBtn.className = 'fas fa-chevron-down';
+                this.classList.add('table-active');
+            }
+        });
+    });
+    
+    // Handle expand button click specifically
+    document.querySelectorAll('.expand-btn').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            this.closest('.master-row').click();
+        });
+    });
+});
+</script>
+{% endblock %}

@@ -1,0 +1,349 @@
+{% extends 'analyzer/base.html' %}
+{% load ist_filters %}
+
+{% block title %}Sentinel Analysis Sessions - RedisLens{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+    <h1 class="h2"><i class="fas fa-history"></i> Sentinel Analysis Sessions</h1>
+    <div class="btn-toolbar mb-2 mb-md-0">
+        <a href="{% url 'sentinel_analyze' %}" class="btn btn-primary">
+            <i class="fas fa-shield-alt"></i> New Sentinel Analysis
+        </a>
+    </div>
+</div>
+
+<!-- Sessions -->
+<div class="card shadow">
+    <div class="card-header py-3 d-flex flex-row align-items-center justify-content-between">
+        <h6 class="m-0 font-weight-bold text-primary">
+            <i class="fas fa-history"></i> Analysis Sessions History
+        </h6>
+        <div class="text-muted">
+            <small>Total: {{ page_obj.paginator.count }} sessions</small>
+        </div>
+    </div>
+    <div class="card-body">
+        {% if page_obj %}
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead class="table-dark">
+                        <tr>
+                            <th><i class="fas fa-calendar"></i> Date</th>
+                            <th><i class="fas fa-shield-alt"></i> Sentinel</th>
+                            <th><i class="fas fa-cog"></i> Analysis Type</th>
+                            <th><i class="fas fa-check-circle"></i> Status</th>
+                            <th><i class="fas fa-chart-bar"></i> Results</th>
+                            <th><i class="fas fa-clock"></i> Duration</th>
+                            <th><i class="fas fa-eye"></i> Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for session in page_obj %}
+                        <tr>
+                            <td>
+                                <strong>{{ session.created_at|ist_date }}</strong><br>
+                                <small class="text-muted">{{ session.created_at|ist_time }}</small>
+                            </td>
+                            <td>
+                                <code>{{ session.sentinel_ip }}:{{ session.sentinel_port }}</code>
+                                {% if session.session_name %}
+                                    <div class="small text-primary">{{ session.session_name }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if session.analysis_type == 'config' %}
+                                    <span class="badge bg-primary">{{ session.get_analysis_type_display }}</span>
+                                {% elif session.analysis_type == 'discovery' %}
+                                    <span class="badge bg-warning text-dark">{{ session.get_analysis_type_display }}</span>
+                                {% elif session.analysis_type == 'full' %}
+                                    <span class="badge bg-success">{{ session.get_analysis_type_display }}</span>
+                                {% elif session.analysis_type == 'topology' %}
+                                    <span class="badge bg-info text-dark">{{ session.get_analysis_type_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ session.get_analysis_type_display }}</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge {% if session.status == 'completed' %}bg-success{% elif session.status == 'failed' %}bg-danger{% elif session.status == 'partial' %}bg-warning{% else %}bg-secondary{% endif %}">
+                                    {{ session.status|title }}
+                                </span>
+                                {% if session.error_message %}
+                                    <div class="small text-danger mt-1">
+                                        <i class="fas fa-exclamation-triangle"></i> 
+                                        {{ session.error_message|truncatechars:50 }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <div class="small">
+                                    {% if session.total_sentinels_found > 0 %}
+                                        <span class="badge bg-info">{{ session.total_sentinels_found }} Sentinel{{ session.total_sentinels_found|pluralize }}</span>
+                                    {% endif %}
+                                    {% if session.total_masters_found > 0 %}
+                                        <span class="badge bg-warning text-dark">{{ session.total_masters_found }} Master{{ session.total_masters_found|pluralize }}</span>
+                                    {% endif %}
+                                    {% if session.total_instances_analyzed > 0 %}
+                                        <span class="badge bg-primary">{{ session.total_instances_analyzed }} Instance{{ session.total_instances_analyzed|pluralize }}</span>
+                                    {% endif %}
+                                </div>
+                                <div class="small text-muted mt-1">
+                                    <i class="fas fa-check text-success"></i> {{ session.successful_connections }}
+                                    {% if session.failed_connections > 0 %}
+                                        <i class="fas fa-times text-danger ms-2"></i> {{ session.failed_connections }}
+                                    {% endif %}
+                                </div>
+                            </td>
+                            <td>
+                                <small class="text-muted">
+                                    {% if session.analysis_end_time %}
+                                        {{ session.duration }}
+                                    {% else %}
+                                        <i class="fas fa-spinner fa-spin"></i> Running...
+                                    {% endif %}
+                                </small>
+                            </td>
+                            <td>
+                                <div class="btn-group btn-group-sm">
+                                    <a href="{% url 'sentinel_analysis_detail' session.id %}" 
+                                       class="btn btn-outline-primary" title="View Details">
+                                        <i class="fas fa-eye"></i>
+                                    </a>
+                                    {% if session.status == 'completed' %}
+                                        <button class="btn btn-outline-success" 
+                                                onclick="exportSession({{ session.id }})" 
+                                                title="Export Data">
+                                            <i class="fas fa-download"></i>
+                                        </button>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if page_obj.has_other_pages %}
+            <nav aria-label="Sessions pagination">
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page=1">First</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                        </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">{{ page_obj.number }} of {{ page_obj.paginator.num_pages }}</span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                        </li>
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        {% else %}
+            <div class="text-center py-5">
+                <i class="fas fa-history fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No Sentinel Analysis Sessions Found</h5>
+                <p class="text-muted">Start your first Sentinel analysis to see session history here.</p>
+                <a href="{% url 'sentinel_analyze' %}" class="btn btn-primary">
+                    <i class="fas fa-shield-alt"></i> Start Sentinel Analysis
+                </a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick Stats -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card border-left-success shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-success text-uppercase mb-1">
+                            Completed Analysis
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            {{ sessions|length|add:0 }}
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-check-circle fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-info shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-info text-uppercase mb-1">
+                            Analysis Types
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            3
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-cogs fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-warning shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-warning text-uppercase mb-1">
+                            Available Actions
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            View • Export
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-tools fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-left-primary shadow h-100 py-2">
+            <div class="card-body">
+                <div class="row no-gutters align-items-center">
+                    <div class="col mr-2">
+                        <div class="text-xs font-weight-bold text-primary text-uppercase mb-1">
+                            Quick Start
+                        </div>
+                        <div class="h5 mb-0 font-weight-bold text-gray-800">
+                            <a href="{% url 'sentinel_analyze' %}" class="btn btn-sm btn-primary">
+                                New Analysis
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-auto">
+                        <i class="fas fa-play fa-2x text-gray-300"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function exportSession(sessionId) {
+    // Show export options modal
+    showExportModal(sessionId);
+}
+
+function showExportModal(sessionId) {
+    // Create export modal dynamically
+    const modalHtml = `
+        <div class="modal fade" id="exportModal" tabindex="-1" aria-labelledby="exportModalLabel" aria-hidden="true">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="exportModalLabel">
+                            <i class="fas fa-download"></i> Export Sentinel Analysis Session ${sessionId}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <p>Choose the export format for your Sentinel analysis data:</p>
+                        <div class="d-grid gap-2">
+                            <button type="button" class="btn btn-outline-success" onclick="downloadExport(${sessionId}, 'csv')">
+                                <i class="fas fa-file-csv"></i> Download as CSV
+                                <small class="d-block text-muted">Tabular format, ideal for spreadsheets</small>
+                            </button>
+                            <button type="button" class="btn btn-outline-info" onclick="downloadExport(${sessionId}, 'json')">
+                                <i class="fas fa-file-code"></i> Download as JSON
+                                <small class="d-block text-muted">Structured format, ideal for processing</small>
+                            </button>
+                        </div>
+                        <hr>
+                        <div class="small text-muted">
+                            <strong>Export includes:</strong>
+                            <ul class="mb-0">
+                                <li>Session overview and statistics</li>
+                                <li>Sentinel instances information</li>
+                                <li>Monitored masters details</li>
+                                <li>Redis instances data</li>
+                                <li>Configuration parameters</li>
+                                <li>Raw INFO command outputs</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('exportModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('exportModal'));
+    modal.show();
+}
+
+function downloadExport(sessionId, format) {
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('exportModal'));
+    modal.hide();
+    
+    // Create download URL
+    const downloadUrl = `/sentinel/export/${sessionId}/?format=${format}`;
+    
+    // Trigger download
+    window.location.href = downloadUrl;
+    
+    // Show success message
+    setTimeout(() => {
+        alert(`Export started! Your ${format.toUpperCase()} file will download shortly.`);
+    }, 500);
+}
+
+// Auto-refresh for running sessions (optional)
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if there are any running sessions
+    const runningSessionsExist = document.querySelector('.fa-spinner');
+    if (runningSessionsExist) {
+        // Refresh page every 10 seconds if there are running sessions
+        setTimeout(function() {
+            window.location.reload();
+        }, 10000);
+    }
+});
+</script>
+{% endblock %}

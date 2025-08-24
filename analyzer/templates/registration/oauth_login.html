@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - RedisLens</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .login-card {
+            background: white;
+            padding: 2.5rem;
+            border-radius: 15px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+            width: 100%;
+            max-width: 450px;
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        .logo i {
+            font-size: 3rem;
+            color: #667eea;
+            margin-bottom: 1rem;
+        }
+        .logo h1 {
+            color: #333;
+            font-weight: 600;
+            margin: 0;
+        }
+        .oauth-login-btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border: none;
+            padding: 15px 20px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+            border-radius: 10px;
+            transition: all 0.3s ease;
+        }
+        .oauth-login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+        }
+        .oauth-login-btn i {
+            font-size: 1.2rem;
+        }
+        .alert {
+            border-radius: 10px;
+            margin-bottom: 1.5rem;
+        }
+        .info-section {
+            background: #f8f9fa;
+            border-radius: 10px;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            text-align: center;
+        }
+        .info-section h6 {
+            color: #495057;
+            margin-bottom: 0.5rem;
+        }
+        .info-section small {
+            color: #6c757d;
+        }
+        .security-note {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: #e7f3ff;
+            border-radius: 8px;
+            border-left: 4px solid #0066cc;
+        }
+        .security-note i {
+            color: #0066cc;
+            margin-right: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="login-card">
+        <div class="logo">
+            <i class="fas fa-database"></i>
+            <h1>RedisLens</h1>
+            <p class="text-muted">Multi-User Analysis Platform</p>
+        </div>
+        
+        <!-- Display messages -->
+        {% if messages %}
+            {% for message in messages %}
+                <div class="alert {% if message.tags == 'error' %}alert-danger{% elif message.tags == 'success' %}alert-success{% elif message.tags == 'info' %}alert-info{% else %}alert-warning{% endif %}" role="alert">
+                    <i class="fas {% if message.tags == 'error' %}fa-exclamation-triangle{% elif message.tags == 'success' %}fa-check-circle{% elif message.tags == 'info' %}fa-info-circle{% else %}fa-exclamation-circle{% endif %} me-2"></i>
+                    {{ message }}
+                </div>
+            {% endfor %}
+        {% endif %}
+        
+        <!-- OAuth Login Section -->
+        <div class="text-center">
+            <h5 class="mb-4 text-dark">Secure Organization Login</h5>
+            
+            <a href="{% url 'oauth_login' %}" class="btn btn-primary oauth-login-btn w-100">
+                <i class="fas fa-shield-alt me-2"></i>
+                Login with Organization Account
+            </a>
+            
+            <div class="security-note">
+                <i class="fas fa-lock"></i>
+                <small>Secure authentication using your organization credentials</small>
+            </div>
+        </div>
+        
+        <!-- Information Section -->
+        <div class="info-section">
+            <h6><i class="fas fa-info-circle me-2"></i>Access Information</h6>
+            <small>
+                Use your organization credentials to access the Redis Analysis Platform.
+                This system uses secure OAuth 2.0 authentication.
+            </small>
+        </div>
+        
+        <!-- Features Preview -->
+        <div class="mt-4">
+            <div class="row text-center">
+                <div class="col-4">
+                    <i class="fas fa-chart-line text-primary mb-2"></i>
+                    <small class="d-block text-muted">Analytics</small>
+                </div>
+                <div class="col-4">
+                    <i class="fas fa-exclamation-triangle text-warning mb-2"></i>
+                    <small class="d-block text-muted">Anomaly Detection</small>
+                </div>
+                <div class="col-4">
+                    <i class="fas fa-users text-success mb-2"></i>
+                    <small class="d-block text-muted">Multi-User</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>
