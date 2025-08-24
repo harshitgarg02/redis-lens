@@ -38,4 +38,4 @@ USER appuser
 EXPOSE 8000
 
 # Run the application
-CMD ["gunicorn", "--bind", "0.0.0.0:8000", "--workers", "3", "redislens.wsgi:application"]
+CMD ["gunicorn", "--config", "gunicorn.conf.py", "redislens.wsgi:application"]

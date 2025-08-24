@@ -23,6 +23,7 @@ RedisLens is a comprehensive web-based Redis analysis platform with intelligent 
 - **Master Discovery**: Automatic detection and monitoring of all masters
 - **Replication Topology**: Visual representation of master-slave relationships
 - **Health Monitoring**: Connection status, failover configurations, and quorum settings
+- **🕐 Long-Running Support**: Optimized for 5-10 minute topology analysis operations
 
 ### 🎯 **Intelligent Anomaly Detection**
 
@@ -104,11 +105,21 @@ For development or customization:
 git clone https://github.com/yourusername/redislens.git
 cd redislens
 
+# Build with optimized production configuration
+docker build -t redislens .
+
 # Start with Docker Compose
 docker-compose up -d
 
 # Access at http://localhost:8000
 ```
+
+**✨ Production Optimizations in Docker:**
+
+- **No Worker Timeouts**: Supports 5-10 minute Redis analysis operations
+- **Enhanced Error Handling**: Robust connection management and retry logic
+- **Memory Management**: 1GB per worker for complex topology analysis
+- **Comprehensive Logging**: Access and error logs in `/app/logs/`
 
 ### Manual Installation
 
@@ -189,14 +200,54 @@ For production deployment:
 2. **Use Production Server**:
 
    ```bash
+   # Recommended: Use the included Gunicorn configuration
+   gunicorn --config gunicorn.conf.py redislens.wsgi:application
+
+   # Or use basic Gunicorn command
    gunicorn --bind 0.0.0.0:8000 redislens.wsgi:application
    ```
 
-3. **Or use Docker**:
+3. **Or use Docker** (Recommended):
    ```bash
    docker build -t redislens .
    docker run -p 8000:8000 redislens
    ```
+
+### 🕐 Long-Running Operations Support
+
+RedisLens is optimized for **long-running Redis topology analysis operations** that can take **5-10 minutes** to complete. The application includes specialized configuration for handling extended operations:
+
+#### **Production Configuration Features**
+
+- **🚫 No Worker Timeouts**: Gunicorn workers can run indefinitely without being killed
+- **💾 Extended Memory Limits**: Increased to 1GB for complex topology analysis
+- **🔄 Smart Worker Management**: Automatic restarts based on memory usage, not time limits
+- **📊 Enhanced Logging**: Comprehensive access and error logs for debugging
+
+#### **Gunicorn Configuration** (`gunicorn.conf.py`)
+
+The application includes a production-ready Gunicorn configuration:
+
+```python
+# Worker timeout disabled for long-running operations
+timeout = 0  # No timeout - allows 5-10 minute Redis analysis
+
+# Memory and performance settings
+workers = multiprocessing.cpu_count() * 2 + 1
+max_worker_memory_usage = 1024 * 1024 * 1024  # 1GB
+max_requests = 1000
+max_requests_jitter = 50
+
+# Enhanced logging
+access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s" %(D)s'
+```
+
+#### **Why This Matters**
+
+- **Redis Topology Discovery**: Scanning large Redis clusters with multiple Sentinels
+- **Master-Slave Analysis**: Deep analysis of replication chains
+- **Anomaly Detection**: Running 33+ detection rules across multiple instances
+- **Network Latency**: Operations across multiple data centers or cloud regions
 
 ## 🚀 Quick Start Guide
 
@@ -593,6 +644,47 @@ python manage.py migrate
 - Ensure correct host and port configuration
 - Verify authentication credentials
 
+#### Long-Running Operation Issues
+
+**Worker Timeout Errors:**
+
+```bash
+# Check if using proper Gunicorn configuration
+gunicorn --config gunicorn.conf.py redislens.wsgi:application
+
+# Verify timeout is disabled in config
+grep -n "timeout" gunicorn.conf.py
+# Should show: timeout = 0
+```
+
+**Memory Issues During Analysis:**
+
+```bash
+# Monitor worker memory usage
+ps aux | grep gunicorn
+
+# Check logs for memory-related restarts
+tail -f /app/logs/gunicorn-error.log
+
+# Increase memory limit if needed (in gunicorn.conf.py):
+max_worker_memory_usage = 2048 * 1024 * 1024  # 2GB
+```
+
+**Analysis Taking Too Long:**
+
+```bash
+# Check Redis connection latency
+redis-cli --latency -h your-redis-host -p 6379
+
+# Enable verbose logging for debugging
+tail -f /app/logs/gunicorn-access.log
+
+# Monitor active connections
+python manage.py shell
+>>> from analyzer.models import SentinelAnalysisSession
+>>> print("Active sessions:", SentinelAnalysisSession.objects.filter(status='running').count())
+```
+
 #### Template Errors
 
 ```bash
@@ -678,12 +770,35 @@ tail -f logs/redislens.log
 - Consider pagination for large instance lists
 - Archive old sessions periodically
 
+### Long-Running Analysis Operations
+
+**Production Configuration (gunicorn.conf.py)**:
+
+- **Timeout Disabled**: `timeout = 0` allows indefinite operation time
+- **Memory Management**: 1GB memory limit per worker for complex analyses
+- **Worker Scaling**: Auto-scaling based on CPU cores for parallel processing
+- **Smart Restarts**: Workers restart based on memory usage, not time limits
+
+**Redis Connection Optimization**:
+
+- Enhanced error handling with specific exception catching
+- Automatic connection retry with `retry_on_timeout=True`
+- Health check intervals for connection monitoring
+- Proper client cleanup to prevent memory leaks
+
+**Network Latency Handling**:
+
+- Extended socket timeouts for cross-region deployments
+- Connection pooling for multiple Redis instance analysis
+- Graceful degradation when individual connections fail
+
 ### Anomaly Detection Optimization
 
 - Rules are evaluated efficiently using categorization
 - Detection runs asynchronously during analysis
 - Results are cached to avoid repeated processing
 - Bulk operations for multiple instances
+- Parallel rule execution for large datasets
 
 ## 🤝 Contributing
 
@@ -726,7 +841,10 @@ redis-analysis-scripts/
 ├── requirements.txt                   # Python dependencies
 ├── manage.py                         # Django management script
 ├── db.sqlite3                        # SQLite database
+├── gunicorn.conf.py                  # Production Gunicorn configuration
 ├── Redis_Anomaly_Rules.csv           # Anomaly detection rules
+├── Dockerfile                        # Docker container configuration
+├── docker-compose.yml                # Docker Compose configuration
 ├── redislens/                        # Django project settings
 │   ├── settings.py
 │   ├── urls.py
