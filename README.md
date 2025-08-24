@@ -60,7 +60,44 @@ RedisLens is a comprehensive web-based Redis analysis platform with intelligent 
 
 ### Quick Start with Docker
 
-The fastest way to get started:
+#### Option 1: Use Pre-built Image (Fastest)
+
+Run RedisLens directly from Docker Hub without cloning the repository:
+
+```bash
+# Pull and run the latest image
+docker pull redis-lens
+docker run -d -p 8000:8000 --name redis-lens redis-lens
+
+# Access at http://localhost:8000
+```
+
+**With custom environment variables:**
+
+```bash
+docker run -d -p 8000:8000 \
+  -e DJANGO_DEBUG=False \
+  -e DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0 \
+  --name redis-lens \
+  redis-lens
+```
+
+**With persistent data (recommended):**
+
+```bash
+# Create a volume for persistent data
+docker volume create redis-lens-data
+
+# Run with persistent database
+docker run -d -p 8000:8000 \
+  -v redis-lens-data:/app \
+  --name redis-lens \
+  redis-lens
+```
+
+#### Option 2: Build from Source
+
+For development or customization:
 
 ```bash
 # Clone the repository
