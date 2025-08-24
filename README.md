@@ -66,8 +66,8 @@ Run RedisLens directly from Docker Hub without cloning the repository:
 
 ```bash
 # Pull and run the latest image
-docker pull redis-lens
-docker run -d -p 8000:8000 --name redis-lens redis-lens
+docker pull harshitgarg02/redis-lens
+docker run -d -p 8000:8000 --name redis-lens harshitgarg02/redis-lens
 
 # Access at http://localhost:8000
 ```
@@ -79,7 +79,7 @@ docker run -d -p 8000:8000 \
   -e DJANGO_DEBUG=False \
   -e DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0 \
   --name redis-lens \
-  redis-lens
+  harshitgarg02/redis-lens
 ```
 
 **With persistent data (recommended):**
@@ -92,7 +92,7 @@ docker volume create redis-lens-data
 docker run -d -p 8000:8000 \
   -v redis-lens-data:/app \
   --name redis-lens \
-  redis-lens
+  harshitgarg02/redis-lens
 ```
 
 #### Option 2: Build from Source
