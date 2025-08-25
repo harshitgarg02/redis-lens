@@ -457,13 +457,28 @@ class SentinelAnalyzer:
         master_ip = master_info.get('ip', '')
         master_port = safe_int(master_info.get('port'), 6379)
         
+        # Parse flags to determine status - ensure it fits within 15 character limit
+        flags = master_info.get('flags', 'master')
+        if isinstance(flags, str):
+            flags_lower = flags.lower()
+            if 'down' in flags_lower:
+                parsed_status = 'down'
+            elif 'failover' in flags_lower:
+                parsed_status = 'failover'
+            elif 'disconnected' in flags_lower:
+                parsed_status = 'disconnected'
+            else:
+                parsed_status = 'master'
+        else:
+            parsed_status = 'master'
+        
         # Always create a new MonitoredMaster for each analysis session
         monitored_master = MonitoredMaster.objects.create(
             sentinel=sentinel,
             master_name=master_name,
             master_ip=master_ip,
             master_port=master_port,
-            status=master_info.get('flags', 'master'),
+            status=parsed_status,
             quorum=safe_int(master_info.get('quorum')),
             down_after_milliseconds=safe_int(master_info.get('down-after-milliseconds')),
             failover_timeout=safe_int(master_info.get('failover-timeout')),
