@@ -27,8 +27,8 @@ def oauth_login(request):
     try:
         oauth_config = settings.OAUTH_CONFIG
         
-        # Validate OAuth configuration
-        required_config = ['AUTHN_URL', 'CLIENT_ID', 'CLIENT_SECRET', 'REDIRECT_URI']
+        # Validate OAuth configuration (REDIRECT_URI is optional and auto-detected)
+        required_config = ['AUTHN_URL', 'CLIENT_ID', 'CLIENT_SECRET']
         missing_config = [key for key in required_config if not oauth_config.get(key)]
         
         if missing_config:
@@ -41,11 +41,15 @@ def oauth_login(request):
         state = secrets.token_urlsafe(32)
         request.session['oauth_state'] = state
         
+        # Get redirect URI with auto-host detection
+        redirect_uri = settings.get_oauth_redirect_uri(request)
+        logger.info(f"Using OAuth redirect URI: {redirect_uri}")
+        
         # Build authorization URL
         auth_params = {
             'response_type': 'code',
             'client_id': oauth_config['CLIENT_ID'],
-            'redirect_uri': oauth_config['REDIRECT_URI'],
+            'redirect_uri': redirect_uri,
             'scope': oauth_config['SCOPE'],
             'state': state,
         }
@@ -105,7 +109,7 @@ def oauth_callback(request):
             return redirect('oauth_login_page')
         
         # Exchange authorization code for access token
-        access_token = exchange_code_for_token(auth_code)
+        access_token = exchange_code_for_token(auth_code, request)
         if not access_token:
             messages.error(request, "Authentication failed: Could not obtain access token")
             return redirect('oauth_login_page')
@@ -138,27 +142,30 @@ def oauth_callback(request):
         return redirect('oauth_login_page')
 
 
-def exchange_code_for_token(auth_code):
+def exchange_code_for_token(auth_code, request=None):
     """
     Exchange authorization code for access token
     """
     try:
         oauth_config = settings.OAUTH_CONFIG
         
-        # Validate required configuration
-        required_config = ['AUTHN_URL', 'CLIENT_ID', 'CLIENT_SECRET', 'REDIRECT_URI']
+        # Validate required configuration (REDIRECT_URI is optional and auto-detected)
+        required_config = ['AUTHN_URL', 'CLIENT_ID', 'CLIENT_SECRET']
         missing_config = [key for key in required_config if not oauth_config.get(key)]
         
         if missing_config:
             logger.error(f"OAuth configuration incomplete for token exchange. Missing: {', '.join(missing_config)}")
             return None
         
+        # Get redirect URI with auto-host detection
+        redirect_uri = settings.get_oauth_redirect_uri(request)
+        
         token_data = {
             'client_id': oauth_config['CLIENT_ID'],
             'client_secret': oauth_config['CLIENT_SECRET'],
             'grant_type': 'authorization_code',
             'code': auth_code,
-            'redirect_uri': oauth_config['REDIRECT_URI'],
+            'redirect_uri': redirect_uri,
         }
         
         headers = {
@@ -233,9 +240,9 @@ def oauth_login_page(request):
     if request.user.is_authenticated:
         return redirect(settings.LOGIN_REDIRECT_URL)
     
-    # Check if OAuth is properly configured
+    # Check if OAuth is properly configured (REDIRECT_URI is optional and auto-detected)
     oauth_config = settings.OAUTH_CONFIG
-    required_config = ['AUTHN_URL', 'CLIENT_ID', 'CLIENT_SECRET', 'REDIRECT_URI']
+    required_config = ['AUTHN_URL', 'CLIENT_ID', 'CLIENT_SECRET']
     missing_config = [key for key in required_config if not oauth_config.get(key)]
     
     if missing_config:

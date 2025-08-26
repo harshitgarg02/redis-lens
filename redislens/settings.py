@@ -151,14 +151,48 @@ OAUTH_CONFIG = {
     'SCOPE': os.getenv('OAUTH_SCOPE', 'openid profile email'),
 }
 
+def get_oauth_redirect_uri(request):
+    """
+    Build OAuth redirect URI - supports both full URIs and path-only with auto-host detection
+    
+    Examples:
+    - OAUTH_REDIRECT_URI="/oauth/callback/" → auto-detects to "https://yourdomain.com/oauth/callback/"
+    - OAUTH_REDIRECT_URI="http://localhost:8000/oauth/callback/" → uses as-is
+    """
+    redirect_uri = OAUTH_CONFIG.get('REDIRECT_URI', '/oauth/callback/')
+    
+    # If it's already a full URI (starts with http:// or https://), use as-is
+    if redirect_uri.startswith(('http://', 'https://')):
+        return redirect_uri
+    
+    # If it's a path-only, auto-detect host from request
+    if request:
+        # Determine protocol
+        protocol = 'https' if request.is_secure() else 'http'
+        
+        # Get host (includes port if non-standard)
+        host = request.get_host()
+        
+        # Ensure path starts with /
+        path = redirect_uri if redirect_uri.startswith('/') else f'/{redirect_uri}'
+        
+        return f"{protocol}://{host}{path}"
+    
+    # Fallback for when no request context is available (e.g., management commands)
+    # Use localhost with the path
+    path = redirect_uri if redirect_uri.startswith('/') else f'/{redirect_uri}'
+    return f"http://localhost:8000{path}"
+
 # Authentication backends
 # OAuth is optional - if not configured, falls back to local authentication
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',  # Local authentication (always enabled)
 ]
 
-# Only enable OAuth backend if configuration is provided
-if all(OAUTH_CONFIG[key] for key in ['AUTHN_URL', 'CLIENT_ID', 'CLIENT_SECRET', 'REDIRECT_URI']):
+# Only enable OAuth backend if minimum configuration is provided
+# REDIRECT_URI is optional and defaults to '/oauth/callback/' with auto-host detection
+required_oauth_keys = ['AUTHN_URL', 'CLIENT_ID', 'CLIENT_SECRET']
+if all(OAUTH_CONFIG[key] for key in required_oauth_keys):
     AUTHENTICATION_BACKENDS.insert(0, 'analyzer.auth_backends.OAuthBackend')
     AUTHENTICATION_BACKENDS.insert(1, 'analyzer.auth_backends.GenericBackend')
 

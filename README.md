@@ -590,13 +590,30 @@ DJANGO_LOG_LEVEL=INFO
 
 #### **OAuth/SSO (Optional)**
 
+**Minimum Required Configuration:**
+
 ```bash
 OAUTH_AUTHN_URL=https://your-sso-provider.com
 OAUTH_CLIENT_ID=redislens
 OAUTH_CLIENT_SECRET=your-oauth-secret
-OAUTH_REDIRECT_URI=https://yourdomain.com/oauth/callback/
+```
+
+**Full Configuration (with optional settings):**
+
+```bash
+OAUTH_AUTHN_URL=https://your-sso-provider.com
+OAUTH_CLIENT_ID=redislens
+OAUTH_CLIENT_SECRET=your-oauth-secret
+OAUTH_TOKEN_URL=https://your-sso-provider.com/token  # Auto-detected if not set
+OAUTH_REDIRECT_URI=/oauth/callback/  # Auto-detects current host if path-only
 OAUTH_SCOPE=openid profile email
 ```
+
+**🚀 Smart Features:**
+
+- **Auto-Redirect URI**: Set `OAUTH_REDIRECT_URI=/oauth/callback/` and it automatically detects current domain and protocol (HTTP/HTTPS)
+- **Auto-Token URL**: Determines token endpoint based on OAuth provider
+- **DNS Support**: Works seamlessly with custom domains without manual configuration
 
 📋 **OAuth Setup Guides:**
 
@@ -619,11 +636,13 @@ DJANGO_LOG_LEVEL=DEBUG
 ```bash
 DJANGO_DEBUG=True
 DATABASE_ENGINE=sqlite
+DJANGO_LOG_LEVEL=DEBUG
 OAUTH_AUTHN_URL=https://accounts.google.com/o/oauth2/v2/auth
 OAUTH_CLIENT_ID=your-google-dev-client-id
 OAUTH_CLIENT_SECRET=your-google-dev-client-secret
-OAUTH_REDIRECT_URI=http://localhost:8000/oauth/callback/
+OAUTH_REDIRECT_URI=/oauth/callback/
 OAUTH_SCOPE=openid profile email
+# Note: OAUTH_REDIRECT_URI automatically becomes http://localhost:8000/oauth/callback/
 ```
 
 **Local Development (PostgreSQL):**
