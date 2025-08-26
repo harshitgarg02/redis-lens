@@ -333,7 +333,32 @@
 </div>
 
 <script>
+// Ensure DOM is fully loaded before adding event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM loaded, initializing anomaly detail page'); // Debug log
+    
+    // Check if Bootstrap is available
+    if (typeof bootstrap === 'undefined') {
+        console.error('Bootstrap is not loaded!');
+        alert('Bootstrap library is not loaded. Please check your template includes.');
+        return;
+    }
+    
+    // Check if statusForm exists
+    const statusForm = document.getElementById('statusForm');
+    if (!statusForm) {
+        console.error('Status form not found!');
+        return;
+    }
+    
+    // Add event listener to the form
+    statusForm.addEventListener('submit', handleStatusFormSubmit);
+    console.log('Status form event listener added'); // Debug log
+});
+
 function updateStatus(status) {
+    console.log('updateStatus called with:', status); // Debug log
+    
     const statusDisplay = {
         'detected': 'Detected',
         'acknowledged': 'Acknowledged', 
@@ -341,17 +366,52 @@ function updateStatus(status) {
         'false_positive': 'False Positive'
     };
     
-    document.getElementById('statusValue').value = status;
-    document.getElementById('statusDisplay').textContent = statusDisplay[status];
-    document.getElementById('statusNotes').value = '';
+    // Check if required elements exist
+    const statusValueInput = document.getElementById('statusValue');
+    const statusDisplaySpan = document.getElementById('statusDisplay');
+    const statusNotesTextarea = document.getElementById('statusNotes');
+    const modalElement = document.getElementById('statusModal');
     
-    new bootstrap.Modal(document.getElementById('statusModal')).show();
+    if (!statusValueInput || !statusDisplaySpan || !statusNotesTextarea || !modalElement) {
+        console.error('Required modal elements not found:', {
+            statusValue: !!statusValueInput,
+            statusDisplay: !!statusDisplaySpan,
+            statusNotes: !!statusNotesTextarea,
+            modal: !!modalElement
+        });
+        alert('Error: Modal elements not found. Please refresh the page and try again.');
+        return;
+    }
+    
+    // Set form values
+    statusValueInput.value = status;
+    statusDisplaySpan.textContent = statusDisplay[status] || status;
+    statusNotesTextarea.value = '';
+    
+    try {
+        // Show the modal
+        const modal = new bootstrap.Modal(modalElement);
+        modal.show();
+        console.log('Modal should be visible now'); // Debug log
+    } catch (error) {
+        console.error('Error showing modal:', error);
+        alert('Error showing modal. Please check if Bootstrap is loaded correctly.');
+    }
 }
 
-document.getElementById('statusForm').addEventListener('submit', function(e) {
+function handleStatusFormSubmit(e) {
     e.preventDefault();
+    console.log('Form submit triggered'); // Debug log
     
-    const formData = new FormData(this);
+    const form = e.target;
+    const formData = new FormData(form);
+    const submitBtn = form.querySelector('button[type="submit"]');
+    
+    // Disable submit button to prevent double submission
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = 'Updating...';
+    
+    console.log('Sending request to update status...'); // Debug log
     
     fetch('{% url 'update_anomaly_status' anomaly.id %}', {
         method: 'POST',
@@ -360,36 +420,94 @@ document.getElementById('statusForm').addEventListener('submit', function(e) {
             'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
         }
     })
-    .then(response => response.json())
+    .then(response => {
+        console.log('Response received:', response.status); // Debug log
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+    })
     .then(data => {
+        console.log('Data received:', data); // Debug log
         if (data.success) {
             // Update the status display
             const statusElement = document.getElementById('current-status');
-            statusElement.textContent = data.status_display;
-            statusElement.className = 'status-' + data.new_status + ' ms-2';
+            if (statusElement) {
+                statusElement.textContent = data.status_display;
+                statusElement.className = 'status-' + data.new_status + ' ms-2';
+            }
             
             // Close modal
-            bootstrap.Modal.getInstance(document.getElementById('statusModal')).hide();
+            const modal = bootstrap.Modal.getInstance(document.getElementById('statusModal'));
+            if (modal) {
+                modal.hide();
+            }
             
             // Show success message
             const alertDiv = document.createElement('div');
-            alertDiv.className = 'alert alert-success alert-dismissible fade show';
+            alertDiv.className = 'alert alert-success alert-dismissible fade show mt-3';
             alertDiv.innerHTML = `
-                Status updated successfully!
-                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                <i class="fas fa-check-circle me-2"></i>Status updated successfully!
+                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
             `;
-            document.querySelector('.container-fluid').insertBefore(alertDiv, document.querySelector('.row'));
+            const container = document.querySelector('.container-fluid');
+            const firstRow = container.querySelector('.row');
+            container.insertBefore(alertDiv, firstRow);
             
-            setTimeout(() => alertDiv.remove(), 5000);
+            // Auto-remove alert after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.remove();
+                }
+            }, 5000);
+            
+            // Update timestamp fields if needed
+            const now = new Date().toLocaleString();
+            if (data.new_status === 'acknowledged') {
+                updateTimestampDisplay('acknowledged', now);
+            } else if (data.new_status === 'resolved') {
+                updateTimestampDisplay('resolved', now);
+            }
+            
         } else {
-            alert('Error updating status: ' + data.error);
+            console.error('Server returned error:', data.error);
+            showErrorAlert('Error updating status: ' + (data.error || 'Unknown error'));
         }
     })
     .catch(error => {
-        console.error('Error:', error);
-        alert('Error updating status');
+        console.error('Fetch error:', error);
+        showErrorAlert('Network error occurred. Please try again.');
+    })
+    .finally(() => {
+        // Re-enable submit button
+        submitBtn.disabled = false;
+        submitBtn.innerHTML = 'Update Status';
     });
-});
+}
+
+function showErrorAlert(message) {
+    const alertDiv = document.createElement('div');
+    alertDiv.className = 'alert alert-danger alert-dismissible fade show mt-3';
+    alertDiv.innerHTML = `
+        <i class="fas fa-exclamation-triangle me-2"></i>${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    `;
+    const container = document.querySelector('.container-fluid');
+    const firstRow = container.querySelector('.row');
+    container.insertBefore(alertDiv, firstRow);
+    
+    setTimeout(() => {
+        if (alertDiv.parentNode) {
+            alertDiv.remove();
+        }
+    }, 8000);
+}
+
+function updateTimestampDisplay(type, timestamp) {
+    // This function updates timestamp displays when status changes
+    // Implementation depends on your template structure
+    console.log(`${type} timestamp updated:`, timestamp);
+}
 
 function editNotes() {
     document.getElementById('notesForm').style.display = 'block';
