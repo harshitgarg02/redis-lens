@@ -44,6 +44,9 @@ def oauth_login(request):
         
         # Get redirect URI with auto-host detection
         redirect_uri = get_oauth_redirect_uri(request)
+        
+        # Store the exact redirect URI used for consistency during callback
+        request.session['oauth_redirect_uri'] = redirect_uri
         logger.info(f"Using OAuth redirect URI: {redirect_uri}")
         
         # Build authorization URL
@@ -123,8 +126,9 @@ def oauth_callback(request):
             # Log in the user
             login(request, user, backend='analyzer.auth_backends.OAuthBackend')
             
-            # Clear OAuth state from session
+            # Clear OAuth state and redirect URI from session
             request.session.pop('oauth_state', None)
+            request.session.pop('oauth_redirect_uri', None)
             
             logger.info(f"User {user.username} logged in successfully via OAuth")
             messages.success(request, f"Welcome back, {user.first_name or user.username}!")
@@ -158,8 +162,11 @@ def exchange_code_for_token(auth_code, request=None):
             logger.error(f"OAuth configuration incomplete for token exchange. Missing: {', '.join(missing_config)}")
             return None
         
-        # Get redirect URI with auto-host detection
-        redirect_uri = get_oauth_redirect_uri(request)
+        # Use the same redirect URI that was stored during login for consistency
+        redirect_uri = request.session.get('oauth_redirect_uri') if request else None
+        if not redirect_uri:
+            # Fallback to auto-detection if not found in session
+            redirect_uri = get_oauth_redirect_uri(request)
         
         token_data = {
             'client_id': oauth_config['CLIENT_ID'],

@@ -36,31 +36,31 @@ def get_oauth_redirect_uri(request):
             request.get_host()                            # Django default
         )
         
-        # Fallback for localhost if host is empty or None
-        if not host or host in ['', 'None']:
+        # Normalize host to ensure consistency between requests
+        if not host or host in ['', 'None', 'none']:
             host = 'localhost:8000'
             protocol = 'http'
-        
-        # Special handling for localhost without port
-        if host == 'localhost':
+        elif host == 'localhost':
             host = 'localhost:8000'
             protocol = 'http'
-        
-        # Debug logging (remove after testing)
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"OAuth redirect URI debug:")
-        logger.info(f"  X-Forwarded-Host: {request.META.get('HTTP_X_FORWARDED_HOST')}")
-        logger.info(f"  Host: {request.META.get('HTTP_HOST')}")
-        logger.info(f"  get_host(): {request.get_host()}")
-        logger.info(f"  Final host: {host}")
-        logger.info(f"  Protocol: {protocol}")
+        elif host.startswith('127.0.0.1'):
+            # Normalize 127.0.0.1 to localhost for consistency
+            if ':' in host:
+                port = host.split(':')[1]
+                host = f'localhost:{port}'
+            else:
+                host = 'localhost:8000'
+            protocol = 'http'
         
         # Ensure path starts with /
         path = redirect_uri if redirect_uri.startswith('/') else f'/{redirect_uri}'
         
         final_uri = f"{protocol}://{host}{path}"
-        logger.info(f"  Final URI: {final_uri}")
+        
+        # Debug logging for troubleshooting
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.debug(f"OAuth redirect URI: {final_uri} (host: {host}, protocol: {protocol})")
         
         return final_uri
     

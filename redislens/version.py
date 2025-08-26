@@ -5,7 +5,7 @@ RedisLens version information
 import os
 from datetime import datetime
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
 __version_info__ = tuple(map(int, __version__.split('.')))
 
 # Version metadata
