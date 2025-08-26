@@ -49,6 +49,45 @@ RedisLens is a comprehensive web-based Redis analysis platform with intelligent 
 - **Session Management**: Secure session handling and user management
 - **Flexible Login**: OAuth for enterprise integration + local accounts for development
 
+## 🔍 **Redis Commands & Operations**
+
+RedisLens performs **read-only operations** exclusively, making it safe for production environments. Here are the specific Redis commands executed:
+
+### **Connection & Health Check**
+
+- **`PING`** - Verify Redis server connectivity and responsiveness
+
+### **Information Gathering**
+
+- **`INFO`** - Collect comprehensive server statistics, memory usage, and configuration
+- **`INFO replication`** - Get detailed replication status and topology information
+
+### **Configuration Analysis**
+
+- **`CONFIG GET *`** - Retrieve all Redis configuration parameters for analysis
+
+### **Sentinel-Specific Commands**
+
+- **`SENTINEL MASTERS`** - Discover all masters monitored by Sentinel
+- **`SENTINEL MASTER <name>`** - Get detailed information about specific masters
+- **`SENTINEL SLAVES <name>`** - Discover slave instances for each master
+- **`SENTINEL SENTINELS <name>`** - Find other Sentinels in the topology
+
+### **Data Collected**
+
+- **Server Metrics**: Version, uptime, memory usage, client connections
+- **Performance Data**: Keyspace hits/misses, command processing statistics
+- **Replication Info**: Master-slave relationships, lag, and synchronization status
+- **Configuration**: All Redis parameters categorized by function
+- **Topology**: Complete cluster structure and Sentinel monitoring setup
+
+### **Security Notes**
+
+- **No Write Operations**: RedisLens never modifies data or configuration
+- **No Data Access**: Does not read or access your stored data/keys
+- **Connection Security**: Supports password authentication and SSL connections
+- **Audit Trail**: All operations are logged for security review
+
 ## 🛠️ Installation & Setup
 
 ### Prerequisites
