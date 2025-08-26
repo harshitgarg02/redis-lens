@@ -177,7 +177,21 @@ if not DEBUG:
     # SESSION_COOKIE_SECURE = True
     # CSRF_COOKIE_SECURE = True
 
-# Logging configuration
+# Logging configuration with environment-based log level control
+# DJANGO_LOG_LEVEL environment variable controls logging verbosity
+# Valid levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+LOG_LEVEL = os.getenv('DJANGO_LOG_LEVEL', 'INFO').upper()
+
+# Validate log level
+VALID_LOG_LEVELS = ['DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL']
+if LOG_LEVEL not in VALID_LOG_LEVELS:
+    print(f"Warning: Invalid DJANGO_LOG_LEVEL '{LOG_LEVEL}'. Using 'INFO' instead.")
+    LOG_LEVEL = 'INFO'
+
+# In DEBUG mode, default to DEBUG logging unless explicitly set
+if DEBUG and os.getenv('DJANGO_LOG_LEVEL') is None:
+    LOG_LEVEL = 'DEBUG'
+
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
@@ -190,53 +204,82 @@ LOGGING = {
             'format': '{levelname} {message}',
             'style': '{',
         },
+        'debug': {
+            'format': '{levelname} {asctime} {module} {lineno:d} {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'file': {
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'class': 'logging.FileHandler',
             'filename': BASE_DIR / 'logs' / 'redislens.log',
-            'formatter': 'verbose',
+            'formatter': 'verbose' if LOG_LEVEL == 'DEBUG' else 'verbose',
         },
         'console': {
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+            'formatter': 'debug' if LOG_LEVEL == 'DEBUG' else 'simple',
         },
     },
     'root': {
         'handlers': ['console', 'file'],
-        'level': 'INFO',
+        'level': LOG_LEVEL,
     },
     'loggers': {
         'django': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         'analyzer': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        # Redis and Sentinel analysis logging
+        'analyzer.redis_service': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'analyzer.sentinel_service': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        'analyzer.anomaly_detector': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         # Authentication debugging
         'analyzer.oauth_views': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         'analyzer.auth_backends': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'level': LOG_LEVEL,
             'propagate': False,
         },
         'analyzer.forms': {
             'handlers': ['console', 'file'], 
-            'level': 'INFO',
+            'level': LOG_LEVEL,
+            'propagate': False,
+        },
+        # Views and URL routing
+        'analyzer.views': {
+            'handlers': ['console', 'file'],
+            'level': LOG_LEVEL,
             'propagate': False,
         },
     },
 }
+
+# Log the current log level for reference
+print(f"RedisLens logging level set to: {LOG_LEVEL}")
 
 # Ensure logs directory exists
 LOG_DIR = BASE_DIR / 'logs'

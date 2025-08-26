@@ -118,6 +118,7 @@ docker run -d -p 8000:8000 --name redis-lens harshitgarg02/redis-lens
 docker run -d -p 8000:8000 \
   -e DJANGO_DEBUG=False \
   -e DJANGO_ALLOWED_HOSTS=localhost,127.0.0.1,0.0.0.0 \
+  -e DJANGO_LOG_LEVEL=WARNING \
   --name redis-lens \
   harshitgarg02/redis-lens
 ```
@@ -557,6 +558,7 @@ nano .env
 DJANGO_SECRET_KEY=your-generated-secret-key
 DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=yourdomain.com,www.yourdomain.com
+DJANGO_LOG_LEVEL=INFO
 ```
 
 #### **Database Options**
@@ -572,6 +574,18 @@ DB_USER=your_db_user
 DB_PASSWORD=your_db_password
 DB_HOST=localhost
 DB_PORT=5432
+```
+
+#### **Logging Configuration**
+
+```bash
+# Control logging verbosity - Valid levels: DEBUG, INFO, WARNING, ERROR, CRITICAL
+DJANGO_LOG_LEVEL=INFO
+
+# Logging Level Examples:
+# Development (verbose): DJANGO_LOG_LEVEL=DEBUG
+# Production (quiet): DJANGO_LOG_LEVEL=WARNING
+# Silent mode: DJANGO_LOG_LEVEL=ERROR
 ```
 
 #### **OAuth/SSO (Optional)**
@@ -596,6 +610,7 @@ OAUTH_SCOPE=openid profile email
 ```bash
 DJANGO_DEBUG=True
 DATABASE_ENGINE=sqlite
+DJANGO_LOG_LEVEL=DEBUG
 # No OAuth - use local signup/login
 ```
 
@@ -630,6 +645,7 @@ DJANGO_DEBUG=False
 DJANGO_ALLOWED_HOSTS=mycompany.com
 DATABASE_ENGINE=postgresql
 DB_PASSWORD=secure-password
+DJANGO_LOG_LEVEL=WARNING
 ```
 
 **Enterprise with SSO:**
@@ -637,6 +653,7 @@ DB_PASSWORD=secure-password
 ```bash
 DJANGO_DEBUG=False
 DATABASE_ENGINE=postgresql
+DJANGO_LOG_LEVEL=INFO
 OAUTH_AUTHN_URL=https://login.microsoftonline.com/tenant/oauth2/v2.0
 OAUTH_CLIENT_ID=redislens-enterprise
 ```
