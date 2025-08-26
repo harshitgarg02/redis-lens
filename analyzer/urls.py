@@ -3,8 +3,9 @@ from . import views
 from . import export_views
 
 urlpatterns = [
-    # Health check endpoint
+    # Health check and version endpoints
     path('elb-healthcheck/', views.elb_healthcheck, name='elb_healthcheck'),
+    path('version/', views.version_info, name='version_info'),
     
     # Main views
     path('', views.dashboard, name='dashboard'),

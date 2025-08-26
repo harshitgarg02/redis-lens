@@ -12,6 +12,7 @@ from pathlib import Path
 import os
 import environ
 from django.core.management.utils import get_random_secret_key
+from .version import get_version, get_version_display, get_full_version
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -62,6 +63,7 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'analyzer.context_processors.version_context',
             ],
         },
     },
@@ -151,37 +153,6 @@ OAUTH_CONFIG = {
     'SCOPE': os.getenv('OAUTH_SCOPE', 'openid profile email'),
 }
 
-def get_oauth_redirect_uri(request):
-    """
-    Build OAuth redirect URI - supports both full URIs and path-only with auto-host detection
-    
-    Examples:
-    - OAUTH_REDIRECT_URI="/oauth/callback/" → auto-detects to "https://yourdomain.com/oauth/callback/"
-    - OAUTH_REDIRECT_URI="http://localhost:8000/oauth/callback/" → uses as-is
-    """
-    redirect_uri = OAUTH_CONFIG.get('REDIRECT_URI', '/oauth/callback/')
-    
-    # If it's already a full URI (starts with http:// or https://), use as-is
-    if redirect_uri.startswith(('http://', 'https://')):
-        return redirect_uri
-    
-    # If it's a path-only, auto-detect host from request
-    if request:
-        # Determine protocol
-        protocol = 'https' if request.is_secure() else 'http'
-        
-        # Get host (includes port if non-standard)
-        host = request.get_host()
-        
-        # Ensure path starts with /
-        path = redirect_uri if redirect_uri.startswith('/') else f'/{redirect_uri}'
-        
-        return f"{protocol}://{host}{path}"
-    
-    # Fallback for when no request context is available (e.g., management commands)
-    # Use localhost with the path
-    path = redirect_uri if redirect_uri.startswith('/') else f'/{redirect_uri}'
-    return f"http://localhost:8000{path}"
 
 # Authentication backends
 # OAuth is optional - if not configured, falls back to local authentication
@@ -312,8 +283,13 @@ LOGGING = {
     },
 }
 
-# Log the current log level for reference
-print(f"RedisLens logging level set to: {LOG_LEVEL}")
+# Application version information
+APP_VERSION = get_version()
+APP_VERSION_DISPLAY = get_version_display()
+APP_VERSION_FULL = get_full_version()
+
+# Log the current log level and version for reference
+print(f"RedisLens {APP_VERSION_DISPLAY} - Logging level set to: {LOG_LEVEL}")
 
 # Ensure logs directory exists
 LOG_DIR = BASE_DIR / 'logs'

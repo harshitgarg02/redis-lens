@@ -1,9 +1,21 @@
 # Use Python 3.11 slim image
 FROM python:3.11-slim
 
+# Build arguments for versioning
+ARG BUILD_DATE
+ARG BUILD_COMMIT
+ARG BUILD_BRANCH=master
+ARG APP_VERSION
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+
+# Set build information as environment variables
+ENV BUILD_DATE=${BUILD_DATE}
+ENV BUILD_COMMIT=${BUILD_COMMIT}
+ENV BUILD_BRANCH=${BUILD_BRANCH}
+ENV APP_VERSION=${APP_VERSION}
 
 # Set work directory
 WORKDIR /app

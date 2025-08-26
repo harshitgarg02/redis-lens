@@ -106,8 +106,12 @@ Run RedisLens directly from Docker Hub without cloning the repository:
 
 ```bash
 # Pull and run the latest image
-docker pull harshitgarg02/redis-lens
-docker run -d -p 8000:8000 --name redis-lens harshitgarg02/redis-lens
+docker pull harshitgarg02/redis-lens:latest
+docker run -d -p 8000:8000 --name redis-lens harshitgarg02/redis-lens:latest
+
+# Or run specific version
+docker pull harshitgarg02/redis-lens:v1.0.0
+docker run -d -p 8000:8000 --name redis-lens harshitgarg02/redis-lens:v1.0.0
 
 # Access at http://localhost:8000
 ```
@@ -288,6 +292,25 @@ access_log_format = '%(h)s %(l)s %(u)s %(t)s "%(r)s" %(s)s %(b)s "%(f)s" "%(a)s"
 - **Master-Slave Analysis**: Deep analysis of replication chains
 - **Anomaly Detection**: Running 33+ detection rules across multiple instances
 - **Network Latency**: Operations across multiple data centers or cloud regions
+
+## 🏷️ **Version Information**
+
+RedisLens includes comprehensive versioning for release management:
+
+- **Current Version**: v1.0.0
+- **Version Display**: Shown in application footer and `/version/` API endpoint
+- **Docker Tags**: `latest`, `v1.0.0`, `1.0.0` with build metadata
+- **API Endpoint**: `GET /version/` returns version and build information
+
+```bash
+# Check version
+curl http://localhost:8000/version/
+
+# Docker tags available
+docker pull harshitgarg02/redis-lens:latest    # Latest stable
+docker pull harshitgarg02/redis-lens:v1.0.0    # Specific version
+docker pull harshitgarg02/redis-lens:1.0.0     # Version without 'v'
+```
 
 ## 🚀 Quick Start Guide
 

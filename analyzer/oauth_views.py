@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.views.decorators.cache import never_cache
+from .oauth_utils import get_oauth_redirect_uri
 from .auth_backends import OAuthBackend, GenericBackend
 from .forms import SignupForm
 
@@ -42,7 +43,7 @@ def oauth_login(request):
         request.session['oauth_state'] = state
         
         # Get redirect URI with auto-host detection
-        redirect_uri = settings.get_oauth_redirect_uri(request)
+        redirect_uri = get_oauth_redirect_uri(request)
         logger.info(f"Using OAuth redirect URI: {redirect_uri}")
         
         # Build authorization URL
@@ -158,7 +159,7 @@ def exchange_code_for_token(auth_code, request=None):
             return None
         
         # Get redirect URI with auto-host detection
-        redirect_uri = settings.get_oauth_redirect_uri(request)
+        redirect_uri = get_oauth_redirect_uri(request)
         
         token_data = {
             'client_id': oauth_config['CLIENT_ID'],

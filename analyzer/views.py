@@ -10,6 +10,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth import login
+from redislens.version import get_version, get_version_display, get_full_version, BUILD_DATE, BUILD_COMMIT, BUILD_BRANCH
 from .models import (
     RedisInstance, RedisConfiguration, AnalysisSession, ReplicationInfo,
     SentinelInstance, SentinelConfiguration, MonitoredMaster, SentinelAnalysisSession,
@@ -1043,3 +1044,21 @@ def sentinel_anomalies(request, sentinel_id):
     }
     
     return render(request, 'analyzer/sentinel_anomalies.html', context)
+
+
+def version_info(request):
+    """
+    API endpoint to get application version information
+    """
+    version_data = {
+        'version': get_version(),
+        'version_display': get_version_display(),
+        'version_full': get_full_version(),
+        'build_date': BUILD_DATE,
+        'build_commit': BUILD_COMMIT,
+        'build_branch': BUILD_BRANCH,
+        'application': 'RedisLens',
+        'description': 'Redis Analysis & Monitoring Platform'
+    }
+    
+    return JsonResponse(version_data)
