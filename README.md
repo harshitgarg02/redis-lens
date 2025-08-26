@@ -1029,12 +1029,24 @@ python manage.py shell
 - [Django Documentation](https://docs.djangoproject.com/)
 - [Bootstrap Documentation](https://getbootstrap.com/docs/)
 
-## 📄 License
+## 📄 License & Copyright
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### **Copyright**
+
+© 2025 RedisLens Development Team. All rights reserved.
+
+### **License**
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+### **Open Source Notice**
+
+RedisLens is open source software built for the Redis community. We encourage contributions, feedback, and collaboration to make Redis infrastructure monitoring accessible to everyone.
 
 ---
 
 **🚀 RedisLens** - Making Redis monitoring intelligent, comprehensive, and actionable.
 
-_Built with ❤️ for the Redis community_
+_Built with ❤️ for the Redis community by the RedisLens Development Team_
+
+**Version:** v1.0.0 | **Copyright:** © 2025 RedisLens | **License:** MIT
