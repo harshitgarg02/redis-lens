@@ -31,6 +31,7 @@ class Command(BaseCommand):
             potential_files = [
                 os.path.join(project_root, 'Redis Anomoly Rules - client-output-buffer-limit_client-query-buffer-li....csv'),
                 os.path.join(project_root, 'redis_anomaly_rules.csv'),
+                os.path.join(project_root, 'Redis_Anomaly_Rules.csv'),
                 os.path.join(project_root, 'anomaly_rules.csv'),
             ]
             

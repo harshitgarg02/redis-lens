@@ -39,7 +39,9 @@ COPY . /app/
 RUN mkdir -p /app/logs
 
 # Collect static files
-RUN python manage.py collectstatic --noinput
+RUN python manage.py migrate --noinput && \
+    python manage.py import_anomaly_rules && \
+    python manage.py collectstatic --noinput
 
 # Create a non-root user
 RUN adduser --disabled-password --gecos '' appuser
